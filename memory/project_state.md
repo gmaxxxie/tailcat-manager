@@ -124,3 +124,12 @@
 ### Open questions
 - License choice (BSD-3-Clause vs MIT) — deferred to first release.
 - Exact Quickshell window vs popup-panel layout for Manager.
+- **LISTENER button row investigation (2026-08-31):** user asked "where's the
+  Start button". Root cause: six unbounded Rows with `width: parent.width - N`
+  children caused endless QML polish() loops that could collapse/misplace
+  sibling rows. Fixed by giving each Row an explicit width. Also learned the
+  reliable UI verification path: the harness window and popup were being
+  covered by the terminal (grim screenshots showed terminal echo, not the
+  popup) — verified via right-edge crop of the popup (popup hangs over the
+  bar; its right half is unobstructed) and by `journalctl grep polish`
+  (4620 -> 0).

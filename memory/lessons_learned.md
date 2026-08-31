@@ -333,3 +333,40 @@ brace balance before declaring done. "Icons missing" from a whole widget is a
 parse-error smoke signal, not a font problem.
 
 Status: active
+
+---
+
+### 2026-08-31 — Unbounded Row + `width: parent.width - N` child = polish() loop, UI elements silently vanish
+
+Type: lesson
+
+Summary:
+A `Row` (or any unbounded positioner) whose child sets `width: parent.width - N`
+creates a layout feedback loop: the Row's implicitWidth depends on the child's
+width, which depends on the Row's width. Qt then logs an endless
+`possible QQuickItem::polish() loop` / `Row called polish() inside
+updatePolish() of Row` warning spam, starves layout computation, and can leave
+sibling rows (e.g. the LISTENER Start/Restart/Ping button row) collapsed to
+0px or misrendered — reported by the user as "the start button is gone".
+
+Details:
+- Fix pattern: give the Row an explicit `width: parent.width` (the Column chain
+  above it has a defined width, so this is not a cycle), or use anchors on a
+  parent with defined size.
+- The identical wrong pattern appeared in Six places (RECEIVE share row, SEND
+  target row, rename row, connect row, create-identity row, add-service row);
+  all were `Row { ... TextField/Text { width: parent.width - N } }`.
+- Rows using `anchors.fill: parent` (device/identity/service list rows) are
+  fine — no loop.
+- Detection: `journalctl --user | grep polish` — 4620 warnings before fix, 0
+  after. The live shell keeps running through it, so it hides serious layout
+  breakage.
+- Keep the `0 warnings` journal bar: any polish/ReferenceError warning is a
+  signal to stop and fix, because the user-visible effect can be "a row of
+  buttons disappeared" while the popup otherwise looks fine.
+
+Action:
+Grep `width: parent.width - ` inside any Row/RowLayout-less positioner and fix
+before rendering; treat polish-loop warnings as blocking bugs.
+
+Status: active
