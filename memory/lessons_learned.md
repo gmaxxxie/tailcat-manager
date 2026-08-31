@@ -48,3 +48,58 @@ Plan V0.2 as native backend; reuse the raw-TCP-stream + half-close model, not a
 heavy protocol.
 
 Status: active
+
+---
+
+### 2026-08-31 — Hermetic offline e2e testing pattern for the backend
+
+Type: lesson
+
+Summary:
+Set `TS_DEBUG_TAILCAT_LOCAL_DERP=1` + `--derpmap-url=none` on a real tailcat
+binary to run fully offline two-endpoint tests (the upstream Homebrew test
+trick). TAILCAT_ADDR_FILE gives the server's blob deterministically.
+
+Details:
+- The dev DERP embeds a NEW local DERP node (with an ephemeral port) in the
+  token every run, so full tokens differ across runs even for a saved key.
+  Address stability must be asserted on the SERVER PUBLIC KEY (nodekey via
+  `tailcat parse`), not the whole token.
+- Always isolate `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `HOME` in e2e tests;
+  genkey/ssh-host-key write to real `~/.config/tailcat` otherwise. Backend
+  passes os.Environ() to children, so t.Setenv propagates.
+- Tests must not leave saved keys in the real tailcat keys dir.
+
+Evidence:
+`backend/e2e/prototype_test.go`; `upstream-tailcat/cmd/tailcat/pipe_test.go`.
+
+Action:
+Keep the hermetic e2e; reuse the pattern for V0.2 file-transfer tests.
+
+Status: active
+
+---
+
+### 2026-08-31 — `tailcat genkey --region=list` is a listing mode, not a region
+
+Type: lesson
+
+Summary:
+Passing `--region=list` to genkey prints the region list and exits 0 WITHOUT
+creating a key, so a wrapper must reject it explicitly rather than treat it as
+an identity region.
+
+Status: active
+
+---
+
+### 2026-08-31 — CLI backend must parse defensively (genkey client output)
+
+Type: lesson
+
+Summary:
+`tailcat genkey --client` writes a `# wrote file ...` note to stderr before the
+`nodekey:` public key on stdout; combined-output wrappers must scan all lines
+for the key, not take the first line.
+
+Status: active

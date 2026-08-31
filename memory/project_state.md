@@ -2,27 +2,39 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: Phase 0 complete; V0.1 not started
+### Status: Phase 0 done; V0.1 backend implemented & tested; GUI next
 
 - **Phase 0 (technical spike) — DONE.** Upstream Tailcat
   (`github.com/tailscale/tailcat`) cloned to `upstream-tailcat/` (pinned
   commit `4d50a34f`, 2026-08-30, `go 1.27.0`) and analyzed from source.
-- **Docs produced:** `docs/tailcat-analysis.md`, `docs/architecture.md`,
-  `docs/security.md`. Repo skeleton created (`backend/`, `ui/`, `tests/`,
-  `packaging/omarchy/`).
-- **tailcat binary is NOT installed** on this machine (Arch; AUR `tailcat` /
-  `tailcat-bin`). The V0.1 backend must detect presence and guide install.
+- **Docs:** `docs/tailcat-analysis.md`, `docs/architecture.md`, `docs/security.md`.
+- **V0.1 backend — DONE (backend/):**
+  - `omarchy-tailcat` Go binary, JSON subcommands: version/status/validate/
+    parse/identities/serve/ping/devices/diagnostics.
+  - `TailcatBackend` interface (`tailcat/backend.go`) + CLI adapter
+    (`tailcat/cli.go`); listener is a detached `tailcat serve` process with
+    persisted state (`listener.json`/`addr`), so serve status/stop work across
+    backend invocations.
+  - `config/` atomic 0600 versioned config; `domain/` device registry;
+    `process/` supervised child; `validate/` shape checks; `atomicfile/`.
+  - Tests: unit (fake tailcat in `testdata/fake-tailcat.sh`) + hermetic e2e
+    (`backend/e2e/`) vs REAL tailcat binary with localhost DERP
+    (`TS_DEBUG_TAILCAT_LOCAL_DERP=1`, `--derpmap-url=none`) — offline.
+  - Verified end-to-end: start listener, validate token, ping direct,
+    echo round-trip through the tunnel, saved devices, identities
+    (persistent address / ephemeral), diagnostics redaction.
+- **Go toolchain installed via mise: go@1.27.0.**
+- **Real tailcat binary built** to /tmp/tailcat-build/tailcat (pseudo-version
+  `v0.0.0-2026...`; versionOK accepts pseudo/devel builds).
+- **tailcat NOT installed on system PATH** (Arch AUR: `tailcat`/`tailcat-bin`);
+  the V0.1 backend detects presence and guides install.
 
 ### Next actions (in order)
-1. `docs/security.md` is drafted; review once before V0.1 file-transfer work.
-2. V0.1 backend skeleton: `backend/go.mod`,
-   `backend/cmd/omarchy-tailcat` (JSON subcommands), `backend/config/` atomic
-   config, `backend/domain/devices`, `backend/process/` supervised lifecycle.
-3. CLI adapter (`backend/tailcat/cli.go`) wiring: `parse`, `genkey`,
-   `ping`, `serve` + `TAILCAT_ADDR_FILE`.
-4. Minimal hermetic connection prototype using `TS_DEBUG_TAILCAT_LOCAL_DERP=1`.
-5. Quickshell GUI (`ui/manifest.json`, `Panel.qml`, `Manager.qml`).
-6. Two-machine testing; then V0.2 native file transfer.
+1. Quickshell GUI shell (`ui/`: manifest.json, Panel.qml bar widget,
+   Manager.qml window, TailcatBridge.qml calling the backend).
+2. Wire GUI ↔ backend; V0.1 acceptance walkthrough (14 criteria).
+3. Two-machine testing.
+4. V0.2 native file transfer (`native.go` + framing protocol).
 
 ### Key technical facts (verified from source)
 - Tailcat server address = `tc` + base64url(CBOR) token; default DERP map
