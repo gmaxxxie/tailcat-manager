@@ -2,7 +2,32 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: Phase 0 done; V0.1 backend + GUI implemented & live-tested; two-machine + V0.2 next
+### Status: V0.1 done & live; V0.2 native transfer foundation done; GUI wiring + two-machine next
+
+- **V0.1** backend + GUI (Quickshell bar widget) live on this machine; layout
+  + Start fixed (stale-reload issue). See earlier sections.
+- **V0.2 native file transfer — foundation DONE:**
+  - `backend/tailcat/native.go`: framing protocol (JSON-line header + raw
+    body; file/accept/reject/error/done/cancel/text) over TCP; `SendFileStream`
+    / `ReceiveFileStream` with progress, accept/reject, SHA-256 verify,
+    safe-name (`filepath.Base`), O_EXCL collision refusal, partial cleanup;
+    `StartReceiver` (native tailcat.Server on TransferPort 42421, DERP map or
+    embedded region) and `DialToken`/`SendFileToToken` (native Client).
+  - `backend/cmd/nativedemo` (recv/send test+prod-shape binary).
+  - `docs/file-transfer.md` (protocol + architecture + security).
+  - Tests (offline): protocol edge cases over TCP loopback + full
+    end-to-end through real WireGuard data plane (local DERP,
+    separate processes) — all pass.
+  - KEY lesson: two tailcat magicsock instances must run in SEPARATE
+    processes (same-process breaks the meow handshake).
+  - Deps: `github.com/tailscale/tailcat` (+ tailscale.com/gvisor) added to
+    backend module; builds are slower now.
+
+### Next actions
+1. V0.2 GUI + backend CLI: `omarchy-tailcat file send/recv` subcommands;
+   Manager.qml Send File / Incoming (accept/reject) + progress UI.
+2. Two-machine acceptance (V0.1 + V0.2 together) — needs the user's 2nd machine.
+3. V0.3 text transfer (reuse the same port/protocol).
 
 - **Phase 0 (technical spike) — DONE.** Upstream Tailcat
   (`github.com/tailscale/tailcat`) cloned to `upstream-tailcat/` (pinned
@@ -36,12 +61,6 @@
   convenience; on the shell PATH).
 - **tailcat NOT installed via pacman** (Arch AUR: `tailcat`/`tailcat-bin`); the
   widget detects presence and shows install help.
-
-### Next actions (in order)
-1. Two-machine V0.1 acceptance walkthrough (the 14 criteria in the brief).
-2. Optional: install tailcat properly (`paru -S tailcat`) so the GUI's Start
-   uses real DERP on this machine.
-3. V0.2 native file transfer (`native.go` + framing protocol + progress UI).
 
 ### Key technical facts (verified from source)
 - Tailcat server address = `tc` + base64url(CBOR) token; default DERP map

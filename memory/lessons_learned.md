@@ -30,6 +30,38 @@ Status: active
 
 ---
 
+### 2026-08-31 — Tailcat native endpoints must run in separate processes
+
+Type: lesson
+
+Summary:
+Two `tailcat` magicsock instances (a native Server and a Client) in the SAME
+process cannot establish a tunnel: the client's magicsock logs "derp-N does
+not know about peer" and removes the route, so the meow handshake times out.
+Run the receiver and sender as SEPARATE processes (which is also the correct
+product architecture).
+
+Details:
+- Symptom: `Ping`/`DialTCPPort` context deadline exceeded; client logs
+  `derp-1 does not know about peer [X], removing route` even though the server
+  logs `derp-1 connected`.
+- The upstream e2e tests always run the two ends as separate CLI processes;
+  in-process dual magicsock is untested upstream and breaks.
+- Fix in tests: exec a small helper binary (`cmd/nativedemo`) for each end
+  against a local DERP map (integration.RunDERPAndSTUN + httptest serving the
+  map JSON, the upstream CLI-test pattern).
+
+Evidence:
+`backend/e2e/native_test.go` (TestNativeEndToEndThroughDERP) vs the earlier
+in-process debug attempt.
+
+Action:
+Always validate native transfers via separate processes.
+
+Status: active
+
+---
+
 ### 2026-08-31 — File/text transfer needs the native library, not the CLI
 
 Type: lesson
