@@ -122,11 +122,6 @@ Item {
     onTriggered: if (root.bridge && !root.bridge.busy) root.bridge.refreshFileRecv()
   }
 
-  Timer {
-    interval: 1000
-    repeat: true
-    running: true
-
   onOpenedChanged: {
     if (opened) Qt.callLater(function() {
       root.grabNavFocus()
