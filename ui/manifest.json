@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "dev.omarchy.tailcat",
+  "name": "Tailcat Manager",
+  "version": "0.1.0",
+  "author": "Tailcat Manager",
+  "license": "MIT",
+  "description": "Graphical management for Tailcat (point-to-point WireGuard connectivity, no control plane) from the Omarchy bar: listener, connect, saved devices, identities, diagnostics, and shared services.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Tailcat",
+    "description": "Start/stop the Tailcat listener, connect to devices, manage saved devices and identities, and configure shared services.",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 10
+    }
+  }
+}

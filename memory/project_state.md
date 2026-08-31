@@ -2,7 +2,7 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: Phase 0 done; V0.1 backend implemented & tested; GUI next
+### Status: Phase 0 done; V0.1 backend + GUI implemented & live-tested; two-machine + V0.2 next
 
 - **Phase 0 (technical spike) — DONE.** Upstream Tailcat
   (`github.com/tailscale/tailcat`) cloned to `upstream-tailcat/` (pinned
@@ -20,21 +20,28 @@
   - Tests: unit (fake tailcat in `testdata/fake-tailcat.sh`) + hermetic e2e
     (`backend/e2e/`) vs REAL tailcat binary with localhost DERP
     (`TS_DEBUG_TAILCAT_LOCAL_DERP=1`, `--derpmap-url=none`) — offline.
-  - Verified end-to-end: start listener, validate token, ping direct,
-    echo round-trip through the tunnel, saved devices, identities
-    (persistent address / ephemeral), diagnostics redaction.
-- **Go toolchain installed via mise: go@1.27.0.**
-- **Real tailcat binary built** to /tmp/tailcat-build/tailcat (pseudo-version
-  `v0.0.0-2026...`; versionOK accepts pseudo/devel builds).
-- **tailcat NOT installed on system PATH** (Arch AUR: `tailcat`/`tailcat-bin`);
-  the V0.1 backend detects presence and guides install.
+- **V0.1 GUI — DONE and LIVE on this machine (ui/):**
+  - Quickshell plugin `dev.omarchy.tailcat` (bar-widget), installed & enabled
+    at `~/.config/omarchy/plugins/dev.omarchy.tailcat/`, placed on the bar
+    (right section). Popup opens with zero errors; OCR-verified rendering
+    (Dashboard/Connect/Devices/Identities/Services/Diagnostics tabs, Start/
+    Restart/Ping self, listener status).
+  - Files: `manifest.json`, `Panel.qml` (bar widget), `Manager.qml` (popup),
+    `TailcatBridge.qml` (structured-argv JSON bridge), `Harness.qml`
+    (dev-only standalone validation).
+  - Backend binary bundled at `ui/bin/omarchy-tailcat`; install script
+    `packaging/omarchy/install.sh`; packaging README.
+- **Go toolchain: mise go@1.27.0.** Real tailcat binary at
+  `/tmp/tailcat-build/tailcat`, symlinked to `~/.local/bin/tailcat` (dev
+  convenience; on the shell PATH).
+- **tailcat NOT installed via pacman** (Arch AUR: `tailcat`/`tailcat-bin`); the
+  widget detects presence and shows install help.
 
 ### Next actions (in order)
-1. Quickshell GUI shell (`ui/`: manifest.json, Panel.qml bar widget,
-   Manager.qml window, TailcatBridge.qml calling the backend).
-2. Wire GUI ↔ backend; V0.1 acceptance walkthrough (14 criteria).
-3. Two-machine testing.
-4. V0.2 native file transfer (`native.go` + framing protocol).
+1. Two-machine V0.1 acceptance walkthrough (the 14 criteria in the brief).
+2. Optional: install tailcat properly (`paru -S tailcat`) so the GUI's Start
+   uses real DERP on this machine.
+3. V0.2 native file transfer (`native.go` + framing protocol + progress UI).
 
 ### Key technical facts (verified from source)
 - Tailcat server address = `tc` + base64url(CBOR) token; default DERP map

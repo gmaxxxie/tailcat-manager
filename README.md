@@ -30,6 +30,16 @@ over Tailscale's WireGuard data plane + NAT traversal.
 - Unit tests (fake tailcat) + **hermetic e2e against a real tailcat binary**
   with a localhost DERP server — fully offline.
 
+**V0.1 GUI — implemented and live on Omarchy** (`ui/`):
+
+- Quickshell bar-widget plugin `dev.omarchy.tailcat` (`manifest.json`,
+  `Panel.qml`, `Manager.qml`, `TailcatBridge.qml`) with Dashboard / Connect /
+  Saved Devices / Identities / Shared Services / Diagnostics.
+- Backend bridge calls `omarchy-tailcat` with structured argv + JSON.
+- Install: `./packaging/omarchy/install.sh` (builds backend, installs the
+  plugin, enables it, puts it on the bar).
+- Dev validation harness: `quickshell -p ui/Harness.qml` (see `ui/README.md`).
+
 Upstream reference copy (pinned for study): `upstream-tailcat/` (a clone of
 `github.com/tailscale/tailcat`, do not edit).
 

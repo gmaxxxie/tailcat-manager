@@ -103,3 +103,43 @@ Summary:
 for the key, not take the first line.
 
 Status: active
+
+---
+
+### 2026-08-31 — Quickshell/QML gotchas for Omarchy plugins
+
+Type: lesson
+
+Summary:
+Specific QML rules that bit while building the Tailcat Manager widget; they
+apply to any Omarchy plugin work.
+
+Details:
+- `Keys {}` as a child object is invalid; use attached `Keys.onPressed:` on the
+  root Item (bare-name child form fails with "Keys is only available via
+  attached properties").
+- Bare property names do NOT resolve from nested child objects; only
+  `root.`-prefixed names and ids are in scope. Always use `root.x` in the
+  render tree (matches how omarchy's own widgets write `root.` everywhere).
+- A required property named the same as an id passed to it self-references
+  (`bridge: bridge` ⇒ undefined). Name the id differently (`tcBridge`).
+- The bar object exposes `foreground`/`barForeground`/`urgent`/`fontFamily`
+  but NOT `accent` — use `Color.accent` (single source from theme).
+- `anchors.fill` is rejected on direct children of Row/Column; wrap in a
+  Rectangle/Item and put the MouseArea as a sibling.
+- Quickshell resolves `qs.Commons`/`qs.Ui` from the config dir; standalone
+  validation needs a harness dir symlinking those modules + plugin files
+  (recipe in `ui/README.md`).
+- The shell hot-reloads plugin files under ~/.config/omarchy/plugins/ on save;
+  `omarchy-shell shell rescanPlugins` re-discovers new plugin folders.
+- `omarchy-shell shell summon <id> '{}'` opens a bar-widget popup — a great
+  scripted way to exercise the popup without clicking.
+
+Evidence:
+`ui/Manager.qml`, `ui/Panel.qml`, `ui/Harness.qml`, shell logs.
+
+Action:
+Follow these conventions for any future Omarchy QML; validate with the harness
+before touching the live shell.
+
+Status: active

@@ -8,6 +8,9 @@
 *.test
 *.out
 
+# Built backend binary (built by packaging/omarchy/install.sh)
+/ui/bin/
+
 # Build artifacts
 /dist/
 /packaging/omarchy/*.pkg.tar.zst
