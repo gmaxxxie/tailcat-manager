@@ -106,6 +106,54 @@ Status: active
 
 ---
 
+### 2026-08-31 — Omarchy shell disables file watching: plugin edits need a shell restart
+
+Type: lesson
+
+Summary:
+The running omarchy-shell process has `QS_DISABLE_FILE_WATCHER=1`, so editing
+plugin files under `~/.config/omarchy/plugins/` does NOT reliably hot-reload.
+After copying changed plugin files you must `omarchy restart shell` to load
+them; otherwise the shell silently runs a stale cached component and you debug
+against dead code (a "Start button does nothing" bug was exactly this).
+
+Details:
+- Symptoms of stale load: journal shows `Manager.qml[72]`/`[76]` errors whose
+  line numbers don't match the current file (line 72 is `}`, line 76 is a
+  console.log in the new file but `refresh of undefined` in the old).
+- `omarchy-shell shell rescanPlugins` re-discovers new plugin folders but does
+  NOT necessarily reload changed QML in an existing plugin.
+- QML `console.log` in the live shell goes to `journalctl --user _PID=<shell>`
+  (stdout of the shell process), not to log.qslog.
+- Validate QML locally first with the harness (`quickshell -p ui/Harness.qml`
+  + module symlinks) before touching the live shell.
+
+Evidence:
+`journalctl --user` for omarchy-shell pids 1303 vs 59194 vs 62236.
+
+Action:
+After any plugin file change: (1) harness-validate, (2) copy, (3)
+`omarchy restart shell`, (4) check journal for the NEW pid.
+
+Status: active
+
+---
+
+### 2026-08-31 — Passing a child id into a KeyboardPanel content component works
+
+Type: lesson
+
+Summary:
+A Manager declared inside a `KeyboardPanel` in Panel.qml CAN receive a
+sibling id (`bridge: tcBridge`) — the earlier dead-Start bug was not the id
+mechanism but the stale-load issue above (the shell was running the older
+`bridge: root.bridge`/`bridge: bridge` versions). After a real reload,
+`bridge` is correctly defined.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Quickshell/QML gotchas for Omarchy plugins
 
 Type: lesson
