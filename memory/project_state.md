@@ -2,7 +2,22 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 done & live; V0.2 file transfer DONE (backend + GUI + real-DERP verified); two-machine next
+### Status: V0.1 + V0.2 done & live; UI restructured (Home command panel + Manage); two-machine next
+
+- **UI structure (2026-08-31)** — Manager.qml reworked from 7 tabs to a
+  **Home ⇄ Manage** model:
+  - Home: command panel with the three core ops on one screen — LISTENER
+    (status/start·stop·restart/ping), RECEIVE FILE (start·stop, share address+
+    copy, incoming Accept/Reject + progress, done line), SEND FILE (device
+    chips + target/path + progress + cancel), plus recent-result line and a
+    shortcut cheat-sheet.
+  - Manage: Devices / Identities / Services / Diagnostics sub-pages, each with
+    a usage-guide line; top nav Home|Manage + a **?** expandable help block
+    (both flow walkthroughs + shortcuts).
+  - Tabs 7→2; keyboard remapped (s/r/j/k/a/d/t/f/Enter/m/?/Esc; Manage 1-4).
+  - Verified: harness clean, live shell clean, OCR shows Home renders.
+
+### Next actions
 
 - **V0.2 file transfer — COMPLETE on this machine:**
   - `omarchy-tailcat file send` (one-shot, JSON-lines progress + result) and

@@ -5,11 +5,18 @@ import Quickshell
 import qs.Commons
 import qs.Ui
 
-// Tailcat Manager — the popup content. Self-contained and reusable: takes a
-// TailcatBridge (owned by Panel.qml so the bar widget and popup share state),
-// an optional `bar` for theming, and an `opened` flag that grabs keyboard
-// focus. Handles its own keyboard navigation so it can also be tested
-// standalone.
+// Tailcat Manager — the popup content. Restructured into a command home:
+//
+//   Home   — the three core operations on one panel: listener (start/stop/
+//            address), receive files (incoming accept/reject/progress), and
+//            send a file (target + path + progress). Plus a recent-result
+//            line, a shortcut cheat-sheet, and an expandable help block.
+//   Manage — secondary configuration: saved devices, identities, shared
+//            services, diagnostics. Each page opens with a usage guide line.
+//
+// Keyboard: Esc close · m toggle Home/Manage · in Home: s listener toggle,
+// r receiver toggle, j/k pick incoming, a accept, d reject, t focus target,
+// f focus path, Enter send · in Manage: 1-4 pick a page, page keys as before.
 Item {
   id: root
 
@@ -24,18 +31,24 @@ Item {
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  // Sections
-  property var sections: ["Status", "Connect", "Devices", "Identities", "Services", "Files", "Diag"]
+  // Pages: Home (command panel) ⇄ Manage (configuration).
+  property var sections: ["Home", "Manage"]
   property int sectionIndex: 0
+  // Manage sub-pages.
+  property var manageSections: ["Devices", "Identities", "Services", "Diagnostics"]
+  property int manageSection: 0
+
+  // Expandable help ("?").
+  property bool showHelp: false
 
   // Cursors for lists
   property int deviceCursor: 0
   property int identityCursor: 0
   property int serviceCursor: 0
+  property int offerCursor: 0
 
   // Listener identity selection ("new" = ephemeral, else saved key name)
   property string listenerKey: "new"
-  property int chipCursor: 0
 
   // Connect state
   property string connectTarget: ""
@@ -60,13 +73,12 @@ Item {
   property bool showDetails: false
 
   // Files (V0.2) state
-  property int offerCursor: 0
   property string recvDir: ""
   property string sendTarget: ""
   property string sendPath: ""
 
   // Operations
-  property string busyOp: ""   // what's running (for button feedback)
+  property string busyOp: ""
   property var pendingPing: null
 
   // Convenience view of the listener status (root-scope for QML children).
@@ -82,12 +94,10 @@ Item {
   // Poll the file receiver state while the Files section is open.
   Timer {
     interval: 1000
-    running: root.opened && root.sectionIndex === 5
+    running: root.opened && root.sectionIndex === 0
     repeat: true
     onTriggered: if (root.bridge && !root.bridge.busy) root.bridge.refreshFileRecv()
   }
-
-  onSectionIndexChanged: if (root.sectionIndex === 5 && root.bridge) root.bridge.refreshFileRecv()
 
   onOpenedChanged: {
     if (opened) Qt.callLater(function() {
@@ -156,59 +166,11 @@ Item {
 
   function copyText(t) {
     if (!t) return
-    // Prefer wl-copy (Wayland); fall back to the shell clipboard if exposed.
     var proc = Qt.createQmlObject(
       'import Quickshell; import Quickshell.Io; Item { Process { id: p; running: false; command: ["wl-copy"]; stdin: StdioWriter { } ; onExited: function(c) { p.destroy(); } } function run(t) { p.stdin.write(t); p.running = true; } }',
       root, "clipcopy")
     if (proc) proc.run(String(t))
   }
-
-  Keys.onPressed: function(event) {
-      var key = event.key
-      if (key === Qt.Key_Escape) { root.closeRequested(); event.accepted = true; return }
-      if (key === Qt.Key_Left) { sectionIndex = clamp(sectionIndex - 1, 0, sections.length - 1); event.accepted = true; return }
-      if (key === Qt.Key_Right) { sectionIndex = clamp(sectionIndex + 1, 0, sections.length - 1); event.accepted = true; return }
-      if (key === Qt.Key_R && !(event.modifiers & Qt.ControlModifier)) { root.bridge.refresh(); event.accepted = true; return }
-      switch (sectionIndex) {
-      case 0: // Status
-        if (key === Qt.Key_S) { startOrStop(); event.accepted = true }
-        else if (key === Qt.Key_P) { pingSelf(false); event.accepted = true }
-        break
-      case 1: // Connect
-        if (key === Qt.Key_C) { connectTargetField.forceActiveFocus(); event.accepted = true }
-        break
-      case 2: // Devices
-        if (key === Qt.Key_J || key === Qt.Key_Down) { moveDeviceCursor(1); event.accepted = true }
-        else if (key === Qt.Key_K || key === Qt.Key_Up) { moveDeviceCursor(-1); event.accepted = true }
-        else if (key === Qt.Key_C) { copyDevice(); event.accepted = true }
-        else if (key === Qt.Key_P) { pingSelectedDevice(); event.accepted = true }
-        else if (key === Qt.Key_Return || key === Qt.Key_Enter || key === Qt.Key_Space) { connectSelectedDevice(); event.accepted = true }
-        else if (key === Qt.Key_D) { removeSelectedDevice(); event.accepted = true }
-        else if (key === Qt.Key_N) { startRename(); event.accepted = true }
-        break
-      case 3: // Identities
-        if (key === Qt.Key_J || key === Qt.Key_Down) { moveIdentityCursor(1); event.accepted = true }
-        else if (key === Qt.Key_K || key === Qt.Key_Up) { moveIdentityCursor(-1); event.accepted = true }
-        else if (key === Qt.Key_C) { newIdentityField.forceActiveFocus(); event.accepted = true }
-        else if (key === Qt.Key_D) { deleteSelectedIdentity(); event.accepted = true }
-        else if (key === Qt.Key_Return || key === Qt.Key_Enter) { useSelectedIdentity(); event.accepted = true }
-        break
-      case 4: // Services
-        if (key === Qt.Key_J || key === Qt.Key_Down) { moveServiceCursor(1); event.accepted = true }
-        else if (key === Qt.Key_K || key === Qt.Key_Up) { moveServiceCursor(-1); event.accepted = true }
-        else if (key === Qt.Key_A) { addServiceField.forceActiveFocus(); event.accepted = true }
-        else if (key === Qt.Key_Space) { toggleSelectedService(); event.accepted = true }
-        else if (key === Qt.Key_D) { removeSelectedService(); event.accepted = true }
-        break
-      case 5: // Files
-        if (key === Qt.Key_J || key === Qt.Key_Down) { moveOfferCursor(1); event.accepted = true }
-        else if (key === Qt.Key_K || key === Qt.Key_Up) { moveOfferCursor(-1); event.accepted = true }
-        else if (key === Qt.Key_A) { acceptSelectedOffer(); event.accepted = true }
-        else if (key === Qt.Key_R) { rejectSelectedOffer(); event.accepted = true }
-        else if (key === Qt.Key_S) { sendPathField.forceActiveFocus(); event.accepted = true }
-        break
-      }
-    }
 
   // ---- Devices ----
   function moveDeviceCursor(d) { deviceCursor = clamp(deviceCursor + d, 0, Math.max(0, root.bridge.devices.length - 1)) }
@@ -233,7 +195,7 @@ Item {
     var s = selectedService()
     if (!s) return
     s.enabled = !s.enabled
-    services = services.slice() // notify
+    services = services.slice()
     root.bridge.lastError = ""
   }
   function removeSelectedService() {
@@ -323,10 +285,152 @@ Item {
     newIdentityName = ""
   }
 
+  // ---- Files (V0.2) ----
+  function moveOfferCursor(d) { offerCursor = clamp(offerCursor + d, 0, Math.max(0, root.bridge.fileRecvPending.length - 1)) }
+  function selectedOffer() { return root.bridge.fileRecvPending.length ? root.bridge.fileRecvPending[offerCursor] : null }
+  function acceptSelectedOffer() { var o = selectedOffer(); if (o && o.state === "offered") root.bridge.fileRecvRespond(o.id, true, "") }
+  function rejectSelectedOffer() { var o = selectedOffer(); if (o && o.state === "offered") root.bridge.fileRecvRespond(o.id, false, "") }
+  function toggleRecv() {
+    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) root.bridge.fileRecvStop()
+    else root.bridge.fileRecvStart(recvDir, "")
+  }
+  function useDeviceForSend() { var d = selectedDevice(); if (d) sendTarget = d.target }
+  function doSendFile() {
+    var t = sendTarget.trim()
+    var p = sendPath.trim()
+    if (!t) { root.bridge.lastError = "Enter a target (paste a token or pick a device)"; return }
+    if (!p) { root.bridge.lastError = "Enter a file path"; return }
+    root.bridge.fileSend(t, p, "")
+  }
+  function sendPct() {
+    if (root.bridge.sendTotal <= 0) return 0
+    return Math.max(0, Math.min(1, root.bridge.sendSent / root.bridge.sendTotal))
+  }
+
+  function identityChips() {
+    var out = []
+    out.push({ key: "new", name: "Ephemeral", selected: root.listenerKey === "new" })
+    for (var i = 0; i < root.bridge.identities.length; i++) {
+      var idn = root.bridge.identities[i]
+      if (idn.persistent && idn.name !== "new" && idn.kind !== "client") {
+        out.push({ key: idn.name, name: idn.name, selected: root.listenerKey === idn.name })
+      }
+    }
+    return out
+  }
+
+  function heroMeta() {
+    if (!root.bridge.available) return "TAILCAT NOT INSTALLED"
+    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) {
+      var st = root.bridge.listener || {}
+      if (st.running === true) return "RUNNING · " + (st.keyInUse || "ephemeral")
+      return "READY"
+    }
+    return "READY"
+  }
+
+  function heroDetail() {
+    if (!root.bridge.available) return "Install `tailcat` (e.g. paru -S tailcat) and restart"
+    var st = root.bridge.listener || {}
+    if (st.running === true && st.addr) return shortTarget(st.addr)
+    return "No listener running"
+  }
+
+  function resultLine() {
+    var r = connectResult
+    if (!r) return ""
+    if (r.ok) {
+      var line = "OK"
+      if (r.direct) line += " · direct"
+      else line += " · DERP" + (r.regionCode ? "(" + r.regionCode + ")" : "")
+      if (r.latency) line += " · " + fmtLatency(r.latency)
+      return line
+    }
+    return r.message || "Failed"
+  }
+
+  function cycleAddKind() {
+    var kinds = ["port-forward", "no-auth-ssh", "files", "exit-node"]
+    var i = kinds.indexOf(addServiceKind)
+    addServiceKind = kinds[(i + 1) % kinds.length]
+  }
+
+  function manageGuide() {
+    switch (root.manageSection) {
+    case 0: return "Saved devices — j/k select · Enter connect · c copy · p ping · n rename · d remove"
+    case 1: return "Identities — j/k select · Enter use for listener · c create · d delete. Persistent = stable address, ephemeral = new each session"
+    case 2: return "Shared services — what the listener serves. j/k · Space toggle · a add · d remove"
+    case 3: return "Diagnostics — r refresh · Details shows the (redacted) server log"
+    }
+    return ""
+  }
+
+  function shortcutLine() {
+    return "s listener · r receive · j/k pick · a accept · d reject · t/f focus · Enter send · m manage · ? help · Esc close"
+  }
+
+  // ---- Keyboard ----
+  Keys.onPressed: function(event) {
+    var key = event.key
+    if (key === Qt.Key_Escape) { root.closeRequested(); event.accepted = true; return }
+    if (key === Qt.Key_M) { sectionIndex = sectionIndex === 0 ? 1 : 0; event.accepted = true; return }
+    if (key === Qt.Key_Question || (key === Qt.Key_Slash && (event.modifiers & Qt.ControlModifier))) { showHelp = !showHelp; event.accepted = true; return }
+    if (root.sectionIndex === 0) {
+      // Home
+      if (key === Qt.Key_S) { startOrStop(); event.accepted = true }
+      else if (key === Qt.Key_R) { toggleRecv(); event.accepted = true }
+      else if (key === Qt.Key_J || key === Qt.Key_Down) { moveOfferCursor(1); event.accepted = true }
+      else if (key === Qt.Key_K || key === Qt.Key_Up) { moveOfferCursor(-1); event.accepted = true }
+      else if (key === Qt.Key_A) { acceptSelectedOffer(); event.accepted = true }
+      else if (key === Qt.Key_D) { rejectSelectedOffer(); event.accepted = true }
+      else if (key === Qt.Key_T) { homeTargetField.forceActiveFocus(); event.accepted = true }
+      else if (key === Qt.Key_F) { homePathField.forceActiveFocus(); event.accepted = true }
+      else if (key === Qt.Key_Return || key === Qt.Key_Enter) { doSendFile(); event.accepted = true }
+    } else {
+      // Manage
+      if (key === Qt.Key_1) { manageSection = 0; event.accepted = true }
+      else if (key === Qt.Key_2) { manageSection = 1; event.accepted = true }
+      else if (key === Qt.Key_3) { manageSection = 2; event.accepted = true }
+      else if (key === Qt.Key_4) { manageSection = 3; event.accepted = true }
+      else if (key === Qt.Key_Left) { manageSection = clamp(manageSection - 1, 0, manageSections.length - 1); event.accepted = true }
+      else if (key === Qt.Key_Right) { manageSection = clamp(manageSection + 1, 0, manageSections.length - 1); event.accepted = true }
+      else {
+        switch (manageSection) {
+        case 0: // Devices
+          if (key === Qt.Key_J || key === Qt.Key_Down) { moveDeviceCursor(1); event.accepted = true }
+          else if (key === Qt.Key_K || key === Qt.Key_Up) { moveDeviceCursor(-1); event.accepted = true }
+          else if (key === Qt.Key_C) { copyDevice(); event.accepted = true }
+          else if (key === Qt.Key_P) { pingSelectedDevice(); event.accepted = true }
+          else if (key === Qt.Key_Return || key === Qt.Key_Enter || key === Qt.Key_Space) { connectSelectedDevice(); event.accepted = true }
+          else if (key === Qt.Key_N) { startRename(); event.accepted = true }
+          else if (key === Qt.Key_X) { removeSelectedDevice(); event.accepted = true }
+          break
+        case 1: // Identities
+          if (key === Qt.Key_J || key === Qt.Key_Down) { moveIdentityCursor(1); event.accepted = true }
+          else if (key === Qt.Key_K || key === Qt.Key_Up) { moveIdentityCursor(-1); event.accepted = true }
+          else if (key === Qt.Key_C) { newIdentityField.forceActiveFocus(); event.accepted = true }
+          else if (key === Qt.Key_X) { deleteSelectedIdentity(); event.accepted = true }
+          else if (key === Qt.Key_Return || key === Qt.Key_Enter) { useSelectedIdentity(); event.accepted = true }
+          break
+        case 2: // Services
+          if (key === Qt.Key_J || key === Qt.Key_Down) { moveServiceCursor(1); event.accepted = true }
+          else if (key === Qt.Key_K || key === Qt.Key_Up) { moveServiceCursor(-1); event.accepted = true }
+          else if (key === Qt.Key_A) { addServiceField.forceActiveFocus(); event.accepted = true }
+          else if (key === Qt.Key_Space) { toggleSelectedService(); event.accepted = true }
+          else if (key === Qt.Key_X) { removeSelectedService(); event.accepted = true }
+          break
+        case 3: // Diagnostics
+          if (key === Qt.Key_R) { root.bridge.refreshDiagnostics(); event.accepted = true }
+          break
+        }
+      }
+    }
+  }
+
   // ---- Render ----
   ColumnLayout {
     anchors.fill: parent
-    spacing: Style.space(6)
+    spacing: Style.space(5)
 
     PanelHero {
       id: hero
@@ -345,20 +449,27 @@ Item {
         }
       }
       trailingControl: Component {
-        Row {
-          spacing: Style.space(4)
+        Column {
+          spacing: Style.space(3)
           Button {
-            text: "Copy addr"
+            text: "Copy"
             fontFamily: root.fontFamily
             fontSize: Style.font.caption
             foreground: root.foreground
             onClicked: if (root.bridge.listener && root.bridge.listener.addr) root.copyText(root.bridge.listener.addr)
           }
+          Button {
+            text: "Help"
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            foreground: root.foreground
+            onClicked: root.showHelp = !root.showHelp
+          }
         }
       }
     }
 
-    // Section tabs (compact so all six fit the popup width)
+    // Top nav: Home ⇄ Manage
     Row {
       Layout.fillWidth: true
       spacing: Style.space(3)
@@ -376,11 +487,13 @@ Item {
         }
       }
       Item { Layout.fillWidth: true; height: 1 }
-    }
-
-    PanelSeparator {
-      Layout.fillWidth: true
-      foreground: root.foreground
+      Button {
+        text: "?"
+        fontFamily: root.fontFamily
+        fontSize: Style.font.caption
+        foreground: root.foreground
+        onClicked: root.showHelp = !root.showHelp
+      }
     }
 
     // Error line (only takes space when present)
@@ -394,114 +507,296 @@ Item {
       wrapMode: Text.WordWrap
     }
 
-    // Content area: exactly the remaining height; each section is a flex layout.
-    Item {
-      id: content
+    // Expandable help block ("?" or Ctrl+/)
+    Column {
+      visible: root.showHelp
+      Layout.fillWidth: true
+      spacing: Style.space(3)
+      Text { text: "RECEIVE A FILE  1. Start receiving (r)  2. Copy the address  3. The sender dials it  4. Accept/Reject here"; width: parent.width; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+      Text { text: "SEND A FILE  1. Device (or paste a token)  2. File path  3. Send (Enter)  4. Progress → done"; width: parent.width; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+      Text { text: "SHORTCUTS  s listener · r receive · j/k pick · a accept · d reject · t/f focus · Enter send · m manage · ? help · Esc close"; width: parent.width; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+    }
+
+    // ============ HOME: command panel ============
+    ColumnLayout {
+      visible: root.sectionIndex === 0
       Layout.fillWidth: true
       Layout.fillHeight: true
-      clip: true
+      anchors.fill: parent
+      spacing: Style.space(5)
 
-      // ---------------- Status ----------------
-      ColumnLayout {
-        visible: root.sectionIndex === 0
-        anchors.fill: parent
+      // Listener
+      PanelSectionHeader { text: "LISTENER"; foreground: root.foreground }
+      Row {
+        Layout.fillWidth: true
         spacing: Style.space(6)
-
-        Row {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
-          Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
-          Button { text: "Ping self"; onClicked: root.pingSelf(true) }
-        }
-
-        PanelSectionHeader { text: "STATUS"; foreground: root.foreground }
-        Text { Layout.fillWidth: true; text: root.listenerState.running === true ? "● Running" : "○ Stopped"; color: root.listenerState.running === true ? root.accent : root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.body }
-        Text { Layout.fillWidth: true; text: "Key: " + (root.listenerState.keyInUse || "—") + (root.listenerState.broad === true ? "   ·   serving ALL local ports" : ""); color: root.listenerState.broad === true ? root.urgent : root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-        Text { Layout.fillWidth: true; visible: (root.listenerState.region || "") !== ""; text: "Region: " + root.listenerState.region; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
-
-        PanelSectionHeader { text: "LISTENER IDENTITY"; foreground: root.foreground }
-        Flow {
-          Layout.fillWidth: true
-          spacing: Style.space(4)
-          Repeater {
-            model: root.identityChips()
-            Button {
-              text: modelData.name
-              selected: modelData.selected
-              fontFamily: root.fontFamily
-              fontSize: Style.font.caption
-              foreground: root.foreground
-              accent: root.accent
-              onClicked: root.listenerKey = modelData.key
-            }
-          }
-        }
-        Text { Layout.fillWidth: true; text: "Broad: with no services, all localhost ports are reachable through this address."; visible: (root.bridge && ((root.bridge.listener && root.bridge.listener.broad === true) || root.services.length === 0)); color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-
-        PanelSectionHeader { text: "LAST RESULT"; foreground: root.foreground }
         Text {
           Layout.fillWidth: true
-          visible: root.connectResult !== null
-          text: root.resultLine()
-          color: root.connectResult && root.connectResult.ok ? root.accent : root.urgent
+          text: root.listenerState.running === true ? "● Running" : "○ Stopped"
+          color: root.listenerState.running === true ? root.accent : root.dim
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          wrapMode: Text.WordWrap
+          font.pixelSize: Style.font.body
         }
-        Item { Layout.fillHeight: true } // absorb trailing space
+        Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
+        Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
+        Button { text: "Ping"; enabled: root.listenerState.running === true; onClicked: root.pingSelf(true) }
+      }
+      Text {
+        Layout.fillWidth: true
+        visible: root.listenerState.running === true
+        text: "Key " + (root.listenerState.keyInUse || "ephemeral") + (root.listenerState.broad === true ? " · serving ALL ports" : "") + (root.listenerState.region ? " · " + root.listenerState.region : "")
+        color: root.listenerState.broad === true ? root.urgent : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        elide: Text.ElideRight
       }
 
-      // ---------------- Connect ----------------
-      ColumnLayout {
-        visible: root.sectionIndex === 1
-        anchors.fill: parent
+      // Receive
+      PanelSectionHeader { text: "RECEIVE FILE"; foreground: root.foreground }
+      Row {
+        Layout.fillWidth: true
         spacing: Style.space(6)
-        Text { Layout.fillWidth: true; text: "Connect to a Tailcat device. Paste a token (tc…) or a DNS name."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Button {
+          text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
+          onClicked: root.toggleRecv()
+        }
         TextField {
-          id: connectTargetField
+          id: homeRecvDirField
           Layout.fillWidth: true
-          placeholderText: "tcXXXXXXXXXX… or device.example.com"
+          placeholderText: "Recv dir (default ~/Downloads)"
           foreground: root.foreground
           accent: root.accent
-          text: root.connectTarget
-          onTextChanged: root.connectTarget = text
-          onAccepted: root.runConnect()
-          Keys.onEscapePressed: root.grabNavFocus()
+          text: root.recvDir
+          onTextChanged: root.recvDir = text
         }
-        Row {
+      }
+      Row {
+        visible: root.bridge.fileRecvState && root.bridge.fileRecvState.addr !== ""
+        Layout.fillWidth: true
+        spacing: Style.space(6)
+        Text {
           Layout.fillWidth: true
-          spacing: Style.space(6)
-          Button { text: "Test"; onClicked: root.runValidate() }
-          Button { text: "Connect"; onClicked: root.runConnect() }
+          text: "Share: " + root.shortTarget(root.bridge.fileRecvState.addr)
+          color: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideMiddle
         }
-        Text { Layout.fillWidth: true; visible: root.connectResult !== null; text: root.resultLine(); color: root.connectResult && root.connectResult.ok ? root.accent : root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-        PanelSeparator { Layout.fillWidth: true; foreground: root.foreground }
-        Text { Layout.fillWidth: true; text: "Save as device"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
-        Row {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          TextField {
-            id: saveDeviceField
-            Layout.fillWidth: true
-            placeholderText: "Device name (optional)"
-            foreground: root.foreground
-            accent: root.accent
-            text: root.newDeviceName
-            onTextChanged: root.newDeviceName = text
-            onAccepted: root.saveCurrentAsDevice()
+        Button { text: "Copy"; onClicked: root.copyText(root.bridge.fileRecvState.addr) }
+      }
+      // Incoming offers (compact; flexes)
+      Flickable {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.minimumHeight: 40
+        contentHeight: offerCol.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: offerCol.implicitHeight > height
+        Column {
+          id: offerCol
+          width: parent.width
+          spacing: Style.space(3)
+          Repeater {
+            model: root.bridge.fileRecvPending
+            Rectangle {
+              width: parent.width
+              height: offerBox.implicitHeight + Style.space(6)
+              radius: Style.cornerRadius
+              color: index === root.offerCursor ? Util.alpha(root.foreground, 0.10) : "transparent"
+              Column {
+                id: offerBox
+                anchors.fill: parent
+                anchors.margins: Style.space(3)
+                spacing: Style.space(3)
+                Row {
+                  spacing: Style.space(6)
+                  Text {
+                    width: parent.parent.width * 0.55
+                    text: modelData.name
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    elide: Text.ElideRight
+                  }
+                  Text {
+                    text: root.fmtBytes(modelData.size) + (modelData.state === "transferring" ? "  ·  " + root.fmtBytes(modelData.sent) : "")
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                }
+                Row {
+                  visible: modelData.state === "offered"
+                  spacing: Style.space(6)
+                  Text { text: "from " + (modelData.sender || "?"); color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+                  Button { text: "Accept"; onClicked: root.bridge.fileRecvRespond(modelData.id, true, "") }
+                  Button { text: "Reject"; onClicked: root.bridge.fileRecvRespond(modelData.id, false, "") }
+                }
+                Rectangle {
+                  visible: modelData.state === "transferring" && modelData.size > 0
+                  width: parent.width
+                  height: 4
+                  radius: 2
+                  color: Util.alpha(root.foreground, 0.15)
+                  Rectangle {
+                    width: parent.width * Math.max(0, Math.min(1, modelData.sent / modelData.size))
+                    height: parent.height
+                    radius: 2
+                    color: root.accent
+                  }
+                }
+              }
+            }
           }
-          Button { text: "Save"; onClicked: root.saveCurrentAsDevice() }
+          Text {
+            visible: root.bridge.fileRecvPending.length === 0
+            text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Waiting for incoming…" : "No incoming — start receiving to accept files from others"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
         }
-        Item { Layout.fillHeight: true }
+      }
+      Text {
+        Layout.fillWidth: true
+        visible: root.bridge.fileRecvDone.length > 0
+        text: "Done: " + root.bridge.fileRecvDone.map(function(d) { return d.name + (d.ok ? " ✓" : " ✗") }).join("  ·  ")
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        elide: Text.ElideRight
       }
 
-      // ---------------- Devices ----------------
+      // Send
+      PanelSectionHeader { text: "SEND FILE"; foreground: root.foreground }
+      Row {
+        Layout.fillWidth: true
+        spacing: Style.space(3)
+        Repeater {
+          model: root.homeDeviceChips()
+          Button {
+            text: modelData.name
+            selected: root.sendTarget === modelData.target
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.spacing.sm
+            foreground: root.foreground
+            accent: root.accent
+            onClicked: root.sendTarget = modelData.target
+          }
+        }
+      }
+      Row {
+        Layout.fillWidth: true
+        spacing: Style.space(4)
+        TextField {
+          id: homeTargetField
+          Layout.fillWidth: true
+          placeholderText: "Target tc… or device name"
+          foreground: root.foreground
+          accent: root.accent
+          text: root.sendTarget
+          onTextChanged: root.sendTarget = text
+          Keys.onEscapePressed: root.grabNavFocus()
+        }
+      }
+      Row {
+        Layout.fillWidth: true
+        spacing: Style.space(4)
+        TextField {
+          id: homePathField
+          Layout.fillWidth: true
+          placeholderText: "File path (e.g. /home/me/a.pdf)"
+          foreground: root.foreground
+          accent: root.accent
+          text: root.sendPath
+          onTextChanged: root.sendPath = text
+          onAccepted: root.doSendFile()
+          Keys.onEscapePressed: root.grabNavFocus()
+        }
+        Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
+        Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
+      }
+      Rectangle {
+        visible: root.bridge.sendActive
+        Layout.fillWidth: true
+        height: 5
+        radius: 2.5
+        color: Util.alpha(root.foreground, 0.15)
+        Rectangle {
+          width: parent.width * root.sendPct()
+          height: parent.height
+          radius: 2.5
+          color: root.accent
+        }
+      }
+      Text {
+        Layout.fillWidth: true
+        visible: root.bridge.sendActive || root.bridge.sendResult !== "" || root.connectResult !== null
+        text: root.bridge.sendActive ? (root.bridge.sendFile + "  ·  " + root.fmtBytes(root.bridge.sendSent) + " / " + root.fmtBytes(root.bridge.sendTotal)) : (root.bridge.sendResult !== "" ? root.bridge.sendResult : root.resultLine())
+        color: root.accent
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        elide: Text.ElideRight
+      }
+
+      Text {
+        Layout.fillWidth: true
+        text: root.shortcutLine()
+        color: Qt.darker(root.foreground, 1.7)
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        elide: Text.ElideRight
+      }
+    }
+
+    // ============ MANAGE: configuration pages ============
+    ColumnLayout {
+      visible: root.sectionIndex === 1
+      Layout.fillWidth: true
+      Layout.fillHeight: true
+      anchors.fill: parent
+      spacing: Style.space(5)
+
+      // Sub-nav
+      Row {
+        Layout.fillWidth: true
+        spacing: Style.space(3)
+        Repeater {
+          model: root.manageSections
+          Button {
+            text: modelData
+            selected: index === root.manageSection
+            fontFamily: root.fontFamily
+            fontSize: Style.font.caption
+            horizontalPadding: Style.spacing.sm
+            foreground: root.foreground
+            accent: root.accent
+            onClicked: root.manageSection = index
+          }
+        }
+        Item { Layout.fillWidth: true; height: 1 }
+      }
+
+      // Guide line for the current manage page.
+      Text {
+        Layout.fillWidth: true
+        text: root.manageGuide()
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        wrapMode: Text.WordWrap
+      }
+
+      PanelSeparator { Layout.fillWidth: true; foreground: root.foreground }
+
+      // --- Devices ---
       ColumnLayout {
-        visible: root.sectionIndex === 2
-        anchors.fill: parent
-        spacing: Style.space(6)
-        Text { Layout.fillWidth: true; text: "Saved devices — j/k move, Enter connect, c copy, p ping, n rename, d remove"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        visible: root.manageSection === 0
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        spacing: Style.space(5)
         Flickable {
           Layout.fillWidth: true
           Layout.fillHeight: true
@@ -533,7 +828,7 @@ Item {
                     elide: Text.ElideRight
                   }
                   Text {
-                    width: parent.width * 0.35
+                    width: parent.width * 0.4
                     text: root.shortTarget(modelData.target)
                     color: root.dim
                     font.family: root.fontFamily
@@ -541,7 +836,7 @@ Item {
                     elide: Text.ElideMiddle
                   }
                   Text {
-                    width: parent.width * 0.2
+                    width: parent.width * 0.14
                     text: modelData.kind === "dns" ? "dns" : "token"
                     color: root.dim
                     font.family: root.fontFamily
@@ -584,15 +879,46 @@ Item {
           }
           Button { text: "Save"; onClicked: root.commitRename() }
         }
-        Text { Layout.fillWidth: true; visible: root.bridge.devices.length === 0; text: "No saved devices yet — add one in the Connect tab."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Text {
+          Layout.fillWidth: true
+          visible: root.bridge.devices.length === 0
+          text: "No saved devices yet. On Home, paste a token and press Enter to connect + save, or add one below."
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          wrapMode: Text.WordWrap
+        }
+        Row {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          TextField {
+            id: saveDeviceField
+            Layout.fillWidth: true
+            placeholderText: "Paste tc… or DNS name"
+            foreground: root.foreground
+            accent: root.accent
+            text: root.connectTarget
+            onTextChanged: root.connectTarget = text
+          }
+          TextField {
+            Layout.preferredWidth: 120
+            placeholderText: "Name (optional)"
+            foreground: root.foreground
+            accent: root.accent
+            text: root.newDeviceName
+            onTextChanged: root.newDeviceName = text
+            onAccepted: root.saveCurrentAsDevice()
+          }
+          Button { text: "Save"; onClicked: root.saveCurrentAsDevice() }
+        }
       }
 
-      // ---------------- Identities ----------------
+      // --- Identities ---
       ColumnLayout {
-        visible: root.sectionIndex === 3
-        anchors.fill: parent
-        spacing: Style.space(6)
-        Text { Layout.fillWidth: true; text: "Identities — j/k move, Enter use, c create, d delete. Persistent identities keep a stable address."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        visible: root.manageSection === 1
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        spacing: Style.space(5)
         Flickable {
           Layout.fillWidth: true
           Layout.fillHeight: true
@@ -640,7 +966,6 @@ Item {
             }
           }
         }
-        PanelSectionHeader { text: "CREATE"; foreground: root.foreground }
         Row {
           Layout.fillWidth: true
           spacing: Style.space(6)
@@ -655,31 +980,30 @@ Item {
             onAccepted: root.createIdentity()
           }
           Button { text: "Create"; onClicked: root.createIdentity() }
+          Button {
+            visible: root.selectedIdentity() && root.selectedIdentity().persistent && root.selectedIdentity().name !== "new"
+            text: "Delete"
+            onClicked: root.deleteSelectedIdentity()
+          }
         }
         Row {
           Layout.fillWidth: true
           spacing: Style.space(6)
           Toggle {
-            label: "Client identity"
-            description: "For --allow lists (no region)"
+            label: "Client identity (for --allow lists)"
+            description: "No DERP region; prints a public nodekey"
             checked: root.newIdentityClient
             onClicked: root.newIdentityClient = !root.newIdentityClient
           }
         }
-        Button {
-          Layout.fillWidth: true
-          visible: root.selectedIdentity() && root.selectedIdentity().persistent && root.selectedIdentity().name !== "new"
-          text: "Delete “" + (root.selectedIdentity() ? root.selectedIdentity().name : "") + "”"
-          onClicked: root.deleteSelectedIdentity()
-        }
       }
 
-      // ---------------- Services ----------------
+      // --- Services ---
       ColumnLayout {
-        visible: root.sectionIndex === 4
-        anchors.fill: parent
-        spacing: Style.space(6)
-        Text { Layout.fillWidth: true; text: "Shared services — what the listener serves. j/k move, Space toggle, a add, d remove."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        visible: root.manageSection === 2
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        spacing: Style.space(5)
         Flickable {
           Layout.fillWidth: true
           Layout.fillHeight: true
@@ -727,7 +1051,6 @@ Item {
             }
           }
         }
-        PanelSectionHeader { text: "ADD SERVICE"; foreground: root.foreground }
         Row {
           Layout.fillWidth: true
           spacing: Style.space(6)
@@ -741,18 +1064,13 @@ Item {
             onTextChanged: root.addServiceName = text
             onAccepted: root.addService()
           }
-          Button { text: "Add"; onClicked: root.addService() }
-        }
-        Row {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
           Button {
             text: root.addServiceKind === "port-forward" ? "TCP port" : root.addServiceKind
             onClicked: root.cycleAddKind()
           }
           TextField {
             visible: root.addServiceKind === "port-forward"
-            width: 80
+            Layout.preferredWidth: 70
             placeholderText: "port"
             foreground: root.foreground
             accent: root.accent
@@ -760,204 +1078,28 @@ Item {
             validator: IntValidator { bottom: 1; top: 65535 }
             onTextChanged: root.addServicePort = text
           }
-          Button { text: "Remove sel"; onClicked: root.removeSelectedService() }
-        }
-        Text { Layout.fillWidth: true; text: "No services: the listener serves ALL localhost ports (broad). Add explicit services to restrict it."; visible: root.services.length === 0; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-      }
-
-      // ---------------- Files (V0.2) --------------
-      ColumnLayout {
-        visible: root.sectionIndex === 5
-        anchors.fill: parent
-        spacing: Style.space(6)
-
-        PanelSectionHeader { text: "RECEIVE"; foreground: root.foreground }
-        Row {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          Button {
-            text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
-            onClicked: root.toggleRecv()
-          }
-          TextField {
-            id: recvDirField
-            Layout.fillWidth: true
-            placeholderText: "Receive dir (default ~/Downloads)"
-            foreground: root.foreground
-            accent: root.accent
-            text: root.recvDir
-            onTextChanged: root.recvDir = text
-          }
-        }
-        Row {
-          visible: root.bridge.fileRecvState && root.bridge.fileRecvState.addr !== ""
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          Text {
-            Layout.fillWidth: true
-            text: "Addr: " + root.shortTarget(root.bridge.fileRecvState.addr)
-            color: root.accent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            elide: Text.ElideMiddle
-          }
-          Button { text: "Copy"; onClicked: root.copyText(root.bridge.fileRecvState.addr) }
-        }
-
-        Text { Layout.fillWidth: true; text: "Incoming — j/k move, a accept, r reject"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
-        Flickable {
-          Layout.fillWidth: true
-          Layout.fillHeight: true
-          contentHeight: offerCol.implicitHeight
-          clip: true
-          boundsBehavior: Flickable.StopAtBounds
-          Column {
-            id: offerCol
-            width: parent.width
-            spacing: Style.space(4)
-            Repeater {
-              model: root.bridge.fileRecvPending
-              Rectangle {
-                width: parent.width
-                height: offerBox.implicitHeight + Style.space(8)
-                radius: Style.cornerRadius
-                color: index === root.offerCursor ? Util.alpha(root.foreground, 0.10) : "transparent"
-                Column {
-                  id: offerBox
-                  anchors.fill: parent
-                  anchors.margins: Style.space(4)
-                  spacing: Style.space(3)
-                  Row {
-                    spacing: Style.space(6)
-                    Text {
-                      width: parent.parent.width * 0.55
-                      text: modelData.name
-                      color: root.foreground
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.body
-                      elide: Text.ElideRight
-                    }
-                    Text {
-                      Layout.fillWidth: true
-                      text: root.bridge.fmtBytes(modelData.size) + (modelData.state === "transferring" ? "  ·  " + root.bridge.fmtBytes(modelData.sent) : "")
-                      color: root.dim
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
-                    }
-                  }
-                  Text {
-                    width: parent.width
-                    text: "from " + (modelData.sender || "?")
-                    color: root.dim
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                  }
-                  Rectangle {
-                    visible: modelData.state === "transferring" && modelData.size > 0
-                    width: parent.width
-                    height: 4
-                    radius: 2
-                    color: Util.alpha(root.foreground, 0.15)
-                    Rectangle {
-                      width: parent.width * Math.max(0, Math.min(1, modelData.sent / modelData.size))
-                      height: parent.height
-                      radius: 2
-                      color: root.accent
-                    }
-                  }
-                  Row {
-                    visible: modelData.state === "offered"
-                    spacing: Style.space(6)
-                    Button { text: "Accept"; onClicked: root.bridge.fileRecvRespond(modelData.id, true, "") }
-                    Button { text: "Reject"; onClicked: root.bridge.fileRecvRespond(modelData.id, false, "") }
-                  }
-                }
-              }
-            }
-            Text {
-              visible: root.bridge.fileRecvPending.length === 0
-              text: "No incoming transfers"
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-          }
+          Button { text: "Add"; onClicked: root.addService() }
         }
         Text {
           Layout.fillWidth: true
-          visible: root.bridge.fileRecvDone.length > 0
-          text: "Completed: " + root.bridge.fileRecvDone.map(function(d) { return d.name + (d.ok ? " ✓" : " ✗") }).join("  ·  ")
-          color: root.dim
+          text: "No services: the listener serves ALL localhost ports. Add explicit ports/services to restrict it."
+          visible: root.services.length === 0
+          color: root.urgent
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
-          elide: Text.ElideRight
-        }
-
-        PanelSectionHeader { text: "SEND"; foreground: root.foreground }
-        Row {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          TextField {
-            id: sendTargetField
-            Layout.fillWidth: true
-            placeholderText: "Target tc… (or pick a device)"
-            foreground: root.foreground
-            accent: root.accent
-            text: root.sendTarget
-            onTextChanged: root.sendTarget = text
-          }
-          Button { text: "Device"; onClicked: root.useDeviceForSend() }
-        }
-        Row {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          TextField {
-            id: sendPathField
-            Layout.fillWidth: true
-            placeholderText: "File path"
-            foreground: root.foreground
-            accent: root.accent
-            text: root.sendPath
-            onTextChanged: root.sendPath = text
-            onAccepted: root.doSendFile()
-          }
-          Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
-          Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
-        }
-        Rectangle {
-          visible: root.bridge.sendActive
-          Layout.fillWidth: true
-          height: 6
-          radius: 3
-          color: Util.alpha(root.foreground, 0.15)
-          Rectangle {
-            width: parent.width * root.sendPct()
-            height: parent.height
-            radius: 3
-            color: root.accent
-          }
-        }
-        Text {
-          Layout.fillWidth: true
-          visible: root.bridge.sendActive || root.bridge.sendResult !== ""
-          text: root.bridge.sendActive ? (root.bridge.sendFile + "  ·  " + root.bridge.fmtBytes(root.bridge.sendSent) + " / " + root.bridge.fmtBytes(root.bridge.sendTotal)) : root.bridge.sendResult
-          color: root.accent
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          elide: Text.ElideRight
+          wrapMode: Text.WordWrap
         }
       }
 
-      // ---------------- Diagnostics ----------------
+      // --- Diagnostics ---
       ColumnLayout {
-        visible: root.sectionIndex === 6
-        anchors.fill: parent
-        spacing: Style.space(6)
-        Text { Layout.fillWidth: true; text: "Diagnostics — r refreshes"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        visible: root.manageSection === 3
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        spacing: Style.space(5)
         Text { Layout.fillWidth: true; text: "Tailcat: " + (root.bridge.available ? (root.bridge.version + (root.bridge.minOK ? "" : "  (older than supported)")) : "not installed"); color: root.bridge.available ? root.foreground : root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.body; wrapMode: Text.WordWrap }
         Text { Layout.fillWidth: true; visible: root.bridge.versionError !== ""; text: root.bridge.versionError; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-        Text { Layout.fillWidth: true; text: "Backend: cli adapter"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
-        Text { Layout.fillWidth: true; text: "Listener: " + (root.bridge.listener && root.bridge.listener.running === true ? "running" : "stopped"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+        Text { Layout.fillWidth: true; text: "Listener: " + (root.bridge.listener && root.bridge.listener.running === true ? "running" : "stopped") + " ·  Receiver: " + (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "running" : "stopped"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.body }
         Row {
           Layout.fillWidth: true
           spacing: Style.space(6)
@@ -993,71 +1135,15 @@ Item {
     }
   }
 
-  function identityChips() {
+  // Home send chips: a few saved devices for one-click targeting.
+  function homeDeviceChips() {
     var out = []
-    out.push({ key: "new", name: "Ephemeral", selected: root.listenerKey === "new" })
-    for (var i = 0; i < root.bridge.identities.length; i++) {
-      var idn = root.bridge.identities[i]
-      if (idn.persistent && idn.name !== "new" && idn.kind !== "client") {
-        out.push({ key: idn.name, name: idn.name, selected: root.listenerKey === idn.name })
-      }
+    var max = Math.min(4, root.bridge.devices.length)
+    for (var i = 0; i < max; i++) {
+      var d = root.bridge.devices[i]
+      out.push({ name: d.name, target: d.target })
     }
     return out
-  }
-
-  function heroMeta() {
-    if (!root.bridge.available) return "TAILCAT NOT INSTALLED"
-    var st = root.bridge.listener || {}
-    if (st.running === true) return "RUNNING · " + (st.keyInUse || "ephemeral")
-    return "READY"
-  }
-
-  function heroDetail() {
-    if (!root.bridge.available) return "Install `tailcat` (e.g. paru -S tailcat) and restart"
-    var st = root.bridge.listener || {}
-    if (st.running === true && st.addr) return shortTarget(st.addr)
-    return "No listener running"
-  }
-
-  function resultLine() {
-    var r = connectResult
-    if (!r) return ""
-    if (r.ok) {
-      var line = "OK"
-      if (r.direct) line += " · direct"
-      else line += " · DERP" + (r.regionCode ? "(" + r.regionCode + ")" : "")
-      if (r.latency) line += " · " + fmtLatency(r.latency)
-      return line
-    }
-    return r.message || "Failed"
-  }
-
-  function cycleAddKind() {
-    var kinds = ["port-forward", "no-auth-ssh", "files", "exit-node"]
-    var i = kinds.indexOf(addServiceKind)
-    addServiceKind = kinds[(i + 1) % kinds.length]
-  }
-
-  // ---- Files (V0.2) ----
-  function moveOfferCursor(d) { offerCursor = clamp(offerCursor + d, 0, Math.max(0, root.bridge.fileRecvPending.length - 1)) }
-  function selectedOffer() { return root.bridge.fileRecvPending.length ? root.bridge.fileRecvPending[offerCursor] : null }
-  function acceptSelectedOffer() { var o = selectedOffer(); if (o && o.state === "offered") root.bridge.fileRecvRespond(o.id, true, "") }
-  function rejectSelectedOffer() { var o = selectedOffer(); if (o && o.state === "offered") root.bridge.fileRecvRespond(o.id, false, "") }
-  function toggleRecv() {
-    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) root.bridge.fileRecvStop()
-    else root.bridge.fileRecvStart(recvDir, "")
-  }
-  function useDeviceForSend() { var d = selectedDevice(); if (d) sendTarget = d.target }
-  function doSendFile() {
-    var t = sendTarget.trim()
-    var p = sendPath.trim()
-    if (!t) { root.bridge.lastError = "Enter a target (paste a token or pick a device)"; return }
-    if (!p) { root.bridge.lastError = "Enter a file path"; return }
-    root.bridge.fileSend(t, p, "")
-  }
-  function sendPct() {
-    if (root.bridge.sendTotal <= 0) return 0
-    return Math.max(0, Math.min(1, root.bridge.sendSent / root.bridge.sendTotal))
   }
 
   // Confirm dialogs
