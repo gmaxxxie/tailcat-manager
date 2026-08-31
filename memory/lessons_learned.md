@@ -299,3 +299,37 @@ Follow these conventions for any future Omarchy QML; validate with the harness
 before touching the live shell.
 
 Status: active
+
+---
+
+### 2026-08-31 — A brace-leaving cleanup commit can kill the whole widget silently
+
+Type: lesson
+
+Summary:
+Removing a debug block's last lines (`onTriggered` + closing `}`) but leaving
+the object's opening lines (`Timer { interval/repeat/running`) dangling turns
+every subsequent root `onOpenedChanged:` handler and all render code into a
+nested child of that object, ending in an unbalanced brace and a total QML
+parse failure ("Expected token `}'" at EOF). Manager became unavailable, the
+Plugin widget failed to load, and the ENTIRE bar widget vanished — the user
+reported it as "icons gone".
+
+Details:
+- Symptom path: journal shows `Plugin widget dev.omarchy.tailcat failed: Type
+  Manager unavailable` + `Manager.qml:1185:2: Expected token '}'`.
+- The failing file had 295 `{` vs 294 `}` (find: strip strings/comments, count
+  braces). Matching the same line numbers in a known-good history commit
+  (`git show 9487a77:ui/Manager.qml`) shows the intended clean structure.
+- Rendering still "worked" at the previous commit; the breakage came from the
+  LAST cleanup commit, which deleted only the tail of a debug Timer block.
+- Fix: delete the orphaned block head entirely and re-validate: harness load
+  (zero errors), `omarchy restart shell`, journal grep for the plugin-failed
+  line, then pixel/OCR verify (grim + tesseract + accent-pixel scan).
+
+Action:
+After ANY cleanup/edit commit of QML, run the harness validation and check
+brace balance before declaring done. "Icons missing" from a whole widget is a
+parse-error smoke signal, not a font problem.
+
+Status: active
