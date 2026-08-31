@@ -30,6 +30,53 @@ Status: active
 
 ---
 
+### 2026-08-31 — Embedded (full-address) tailcat tokens break DERP routing; use short tokens
+
+Type: lesson
+
+Summary:
+Tailcat tokens that EMBED the DERP region (the "full address" form, and what
+`tailcat.Server.ConnBlob()` produces) fail to connect over a non-1 DERP region:
+`ParseConnBlob` restores the elided RegionID as 1, so the client thinks the
+server is on DERP region 1 while the server is actually on e.g. 304 → the
+meow is routed to the wrong region and the handshake times out
+("derp-1 does not know about peer …", removed route). SHORT tokens (RegionID
+reference) work because the client fetches the DERP map and uses the real ID.
+
+Details:
+- Local-DERP tests passed with embedded tokens only because the local region
+  happens to be ID 1.
+- Real-DERP native transfer failed until the receiver emitted a short token
+  (`ConnInfo{ServerPublic, ServerDiscoPublic, RegionID}.ConnBlob()` built from
+  the key the Server runs with).
+- The upstream CLI's own `serve --full-address` is also broken for region != 1;
+  its default short form is the reliable path.
+
+Evidence:
+`backend/tailcat/native.go` StartReceiver (short-token construction); e2e
+passes locally and over real DERP after the fix.
+
+Action:
+Always emit region-ID-referencing tokens, never embedded regions, until
+upstream fixes the restore logic.
+
+Status: active
+
+---
+
+### 2026-08-31 — Shell pkill self-match trap
+
+Type: lesson
+
+Summary:
+`pkill -f "pattern"` matches the CURRENT shell when the pattern text appears in
+its own command line, silently killing the script (no output). Use the
+classic `[f]ile` bracket trick so the pattern doesn't match itself.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Tailcat native endpoints must run in separate processes
 
 Type: lesson

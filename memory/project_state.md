@@ -2,7 +2,30 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 done & live; V0.2 native transfer foundation done; GUI wiring + two-machine next
+### Status: V0.1 done & live; V0.2 file transfer DONE (backend + GUI + real-DERP verified); two-machine next
+
+- **V0.2 file transfer — COMPLETE on this machine:**
+  - `omarchy-tailcat file send` (one-shot, JSON-lines progress + result) and
+    `file recv` daemon + `recv-start/stop/status/respond` (file-based IPC
+    state + decisions, mirrors the serve listener pattern).
+  - GUI Files tab (7 tabs): receive service (start/stop, addr+copy, incoming
+    offers with Accept/Reject + progress bars, completed list) and send
+    (target + file path, progress bar, cancel) via TailcatBridge streaming
+    (`file send` Process with waitForEnd:false collector).
+  - KEY FIX: embedded-region tokens break real-DERP routing (ParseConnBlob
+    restores RegionID=1); StartReceiver now emits a short RegionID token.
+    Sender retries the meow handshake (startup race).
+  - Verified: full backend suite green (protocol + local-DERP e2e + CLI file
+    flows); real-DERP CLI ping 152ms; real-DERP 400KB transfer intact with
+    SHA-256; GUI bridge (HarnessFile) real-DERP transfer intact; live shell
+    loads 7 tabs clean (pid journal clean).
+
+### Next actions
+1. **Two-machine acceptance** (V0.1 + V0.2 together) — needs the user's 2nd
+   machine: install tailcat + plugin on both, share listener addr / receiver
+   addr, transfer a file both ways, test Direct-vs-DERP, reject/cancel.
+2. V0.3 text transfer (same port/protocol, `op:"text"` message; Add a Send
+   Text UI row + incoming text notification).
 
 - **V0.1** backend + GUI (Quickshell bar widget) live on this machine; layout
   + Start fixed (stale-reload issue). See earlier sections.
