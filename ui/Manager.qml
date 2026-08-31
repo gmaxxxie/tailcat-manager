@@ -84,6 +84,29 @@ Item {
   // Convenience view of the listener status (root-scope for QML children).
   readonly property var listenerState: root.bridge ? (root.bridge.listener || {}) : ({})
 
+  // Height of the currently visible page, so the popup can hug its content
+  // (no dead space at the bottom). homeCol/manageCol are defined later in this
+  // component; implicitHeight resolves after creation. Includes the fixed
+  // chrome (hero + nav) so the popup never gets cut short.
+  readonly property real pageImplicitHeight: {
+    var body = 0
+    var extra = (root.showHelp ? helpBlock.implicitHeight : 0)
+             + (root.bridge && root.bridge.lastError !== "" ? errLine.implicitHeight : 0)
+    if (root.sectionIndex === 0) {
+      body = homeCol ? homeCol.implicitHeight : 0
+    } else {
+      var pg = devPage
+      if (root.manageSection === 1) pg = idPage
+      else if (root.manageSection === 2) pg = svcPage
+      else if (root.manageSection === 3) pg = diagPage
+      body = pg ? pg.implicitHeight : 0
+      body += manageNavRow ? manageNavRow.implicitHeight : 28
+      body += Style.space(56) // guide line + separator + spacing
+    }
+    return body + hero.implicitHeight + topNav.implicitHeight + extra + Style.space(28)
+  }
+  implicitHeight: root.pageImplicitHeight
+
   Timer {
     interval: 10000
     running: true
@@ -477,6 +500,7 @@ Item {
 
     // Top nav: Home ⇄ Manage.
     Row {
+      id: topNav
       Layout.fillWidth: true
       spacing: Style.space(3)
       Repeater {
@@ -504,6 +528,7 @@ Item {
 
     // Error line (only takes space when present).
     Text {
+      id: errLine
       Layout.fillWidth: true
       visible: root.bridge && root.bridge.lastError !== ""
       text: root.bridge ? root.bridge.lastError : ""
@@ -515,6 +540,7 @@ Item {
 
     // Expandable help block ("?" or Ctrl+/).
     Column {
+      id: helpBlock
       Layout.fillWidth: true
       visible: root.showHelp
       spacing: Style.space(3)
@@ -541,7 +567,7 @@ Item {
         Column {
           id: homeCol
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Style.space(4)
 
           // ---- Listener ----
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
@@ -568,17 +594,6 @@ Item {
             font.pixelSize: Style.font.caption
             elide: Text.ElideRight
           }
-          Row {
-            visible: root.listenerState.running === true
-            spacing: Style.space(6)
-            Button { text: "Copy addr"; onClicked: if (root.bridge.listener && root.bridge.listener.addr) root.copyText(root.bridge.listener.addr) }
-            Text {
-              text: "分享此地址，对方用 'Connect' 或 'SEND FILE' 连入"
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-          }
 
           // ---- Receive ----
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
@@ -586,12 +601,13 @@ Item {
           Row {
             spacing: Style.space(6)
             Button {
+              width: 132
               text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
               onClicked: root.toggleRecv()
             }
             TextField {
               id: homeRecvDirField
-              width: parent.width - 170
+              width: parent.width - 138
               placeholderText: "Recv dir (default ~/Downloads)"
               foreground: root.foreground
               accent: root.accent
@@ -719,7 +735,7 @@ Item {
             spacing: Style.space(4)
             TextField {
               id: homeTargetField
-              width: parent.width - 100
+              width: parent.width - 96
               placeholderText: "Target tc… (or pick a device above)"
               foreground: root.foreground
               accent: root.accent
@@ -727,7 +743,7 @@ Item {
               onTextChanged: root.sendTarget = text
               Keys.onEscapePressed: root.grabNavFocus()
             }
-            Button { text: "Use device"; onClicked: root.useDeviceForSend() }
+            Button { text: "Use device"; width: 90; onClicked: root.useDeviceForSend() }
           }
           Row {
             spacing: Style.space(4)
@@ -791,10 +807,11 @@ Item {
         Column {
           id: manageCol
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Style.space(4)
 
           // Sub-nav.
           Row {
+            id: manageNavRow
             spacing: Style.space(3)
             Repeater {
               model: root.manageSections
@@ -823,6 +840,7 @@ Item {
 
           // --- Devices ---
           Column {
+            id: devPage
             visible: root.manageSection === 0
             width: parent.width
             spacing: Style.space(5)
@@ -931,6 +949,7 @@ Item {
 
           // --- Identities ---
           Column {
+            id: idPage
             visible: root.manageSection === 1
             width: parent.width
             spacing: Style.space(5)
@@ -999,6 +1018,7 @@ Item {
 
           // --- Services ---
           Column {
+            id: svcPage
             visible: root.manageSection === 2
             width: parent.width
             spacing: Style.space(5)
@@ -1079,6 +1099,7 @@ Item {
 
           // --- Diagnostics ---
           Column {
+            id: diagPage
             visible: root.manageSection === 3
             width: parent.width
             spacing: Style.space(5)

@@ -66,8 +66,8 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: manager
-    contentWidth: panel.fittedContentWidth(Style.space(450))
-    contentHeight: panel.fittedContentHeight(Style.space(540), Style.space(620))
+    contentWidth: panel.fittedContentWidth(Style.space(460))
+    contentHeight: panel.fittedContentHeight(manager.implicitHeight + Style.space(16), Style.space(660))
 
     Manager {
       id: manager
