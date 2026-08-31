@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
 import qs.Commons
 import qs.Ui
@@ -14,7 +15,8 @@ Item {
 
   required property var bridge
   property QtObject bar: null
-  property bool opened: false  signal closeRequested()
+  property bool opened: false
+  signal closeRequested()
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.55)
@@ -23,7 +25,7 @@ Item {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   // Sections
-  property var sections: ["Dashboard", "Connect", "Devices", "Identities", "Services", "Diagnostics"]
+  property var sections: ["Status", "Connect", "Devices", "Identities", "Services", "Diag"]
   property int sectionIndex: 0
 
   // Cursors for lists
@@ -62,7 +64,7 @@ Item {
   property var pendingPing: null
 
   // Convenience view of the listener status (root-scope for QML children).
-  readonly property var listenerState: bridge ? (bridge.listener || {}) : ({})
+  readonly property var listenerState: root.bridge ? (root.bridge.listener || {}) : ({})
 
   Timer {
     interval: 10000
@@ -97,11 +99,11 @@ Item {
   }
 
   function pingSelf(untilDirect) {
-    if (!bridge.listener || !bridge.listener.addr) return
+    if (!root.bridge.listener || !root.bridge.listener.addr) return
     busyOp = "ping"
-    bridge.ping(bridge.listener.addr, untilDirect, function(res) {
+    root.bridge.ping(root.bridge.listener.addr, untilDirect, function(res) {
       busyOp = ""
-      bridge.lastError = res.ok ? "" : (res.message || "Ping failed")
+      root.bridge.lastError = res.ok ? "" : (res.message || "Ping failed")
       connectResult = res
     })
   }
@@ -110,10 +112,10 @@ Item {
     var d = deviceById(id)
     if (!d) return
     busyOp = "ping"
-    bridge.ping(d.target, false, function(res) {
+    root.bridge.ping(d.target, false, function(res) {
       busyOp = ""
-      if (res.ok) bridge.touchDevice(id)
-      bridge.lastError = res.ok ? "" : (res.message || "Ping failed")
+      if (res.ok) root.bridge.touchDevice(id)
+      root.bridge.lastError = res.ok ? "" : (res.message || "Ping failed")
       connectResult = res
     })
   }
@@ -122,17 +124,17 @@ Item {
     var d = deviceById(id)
     if (!d) return
     busyOp = "connect"
-    bridge.ping(d.target, true, function(res) {
+    root.bridge.ping(d.target, true, function(res) {
       busyOp = ""
-      if (res.ok) bridge.touchDevice(id)
-      bridge.lastError = res.ok ? "" : (res.message || "Connect failed")
+      if (res.ok) root.bridge.touchDevice(id)
+      root.bridge.lastError = res.ok ? "" : (res.message || "Connect failed")
       connectResult = res
     })
   }
 
   function deviceById(id) {
-    for (var i = 0; i < bridge.devices.length; i++)
-      if (bridge.devices[i].id === id) return bridge.devices[i]
+    for (var i = 0; i < root.bridge.devices.length; i++)
+      if (root.bridge.devices[i].id === id) return root.bridge.devices[i]
     return null
   }
 
@@ -150,9 +152,9 @@ Item {
       if (key === Qt.Key_Escape) { root.closeRequested(); event.accepted = true; return }
       if (key === Qt.Key_Left) { sectionIndex = clamp(sectionIndex - 1, 0, sections.length - 1); event.accepted = true; return }
       if (key === Qt.Key_Right) { sectionIndex = clamp(sectionIndex + 1, 0, sections.length - 1); event.accepted = true; return }
-      if (key === Qt.Key_R && !(event.modifiers & Qt.ControlModifier)) { bridge.refresh(); event.accepted = true; return }
+      if (key === Qt.Key_R && !(event.modifiers & Qt.ControlModifier)) { root.bridge.refresh(); event.accepted = true; return }
       switch (sectionIndex) {
-      case 0: // Dashboard
+      case 0: // Status
         if (key === Qt.Key_S) { startOrStop(); event.accepted = true }
         else if (key === Qt.Key_P) { pingSelf(false); event.accepted = true }
         break
@@ -186,18 +188,18 @@ Item {
     }
 
   // ---- Devices ----
-  function moveDeviceCursor(d) { deviceCursor = clamp(deviceCursor + d, 0, Math.max(0, bridge.devices.length - 1)) }
-  function selectedDevice() { return bridge.devices.length ? bridge.devices[deviceCursor] : null }
+  function moveDeviceCursor(d) { deviceCursor = clamp(deviceCursor + d, 0, Math.max(0, root.bridge.devices.length - 1)) }
+  function selectedDevice() { return root.bridge.devices.length ? root.bridge.devices[deviceCursor] : null }
   function copyDevice() { var d = selectedDevice(); if (d) copyText(d.target) }
   function pingSelectedDevice() { var d = selectedDevice(); if (d) pingDevice(d.id) }
   function connectSelectedDevice() { var d = selectedDevice(); if (d) connectDevice(d.id) }
   function removeSelectedDevice() { var d = selectedDevice(); if (d) confirmRemoveDevice.targetDevice = d }
   function startRename() { var d = selectedDevice(); if (d) { renameText = d.name; renaming = true; renameField.forceActiveFocus() } }
-  function commitRename() { var d = selectedDevice(); if (d && renameText.trim()) bridge.renameDevice(d.id, renameText.trim()); renaming = false }
+  function commitRename() { var d = selectedDevice(); if (d && renameText.trim()) root.bridge.renameDevice(d.id, renameText.trim()); renaming = false }
 
   // ---- Identities ----
-  function moveIdentityCursor(d) { identityCursor = clamp(identityCursor + d, 0, Math.max(0, bridge.identities.length - 1)) }
-  function selectedIdentity() { return bridge.identities.length ? bridge.identities[identityCursor] : null }
+  function moveIdentityCursor(d) { identityCursor = clamp(identityCursor + d, 0, Math.max(0, root.bridge.identities.length - 1)) }
+  function selectedIdentity() { return root.bridge.identities.length ? root.bridge.identities[identityCursor] : null }
   function useSelectedIdentity() { var i = selectedIdentity(); if (i && i.persistent) { listenerKey = i.name; sectionIndex = 0 } }
   function deleteSelectedIdentity() { var i = selectedIdentity(); if (i && i.persistent && i.name !== "new") confirmDeleteIdentity.targetName = i.name }
 
@@ -209,7 +211,7 @@ Item {
     if (!s) return
     s.enabled = !s.enabled
     services = services.slice() // notify
-    bridge.lastError = ""
+    root.bridge.lastError = ""
   }
   function removeSelectedService() {
     if (!services.length) return
@@ -220,70 +222,70 @@ Item {
     var name = addServiceName.trim()
     if (addServiceKind === "port-forward") {
       var port = parseInt(addServicePort, 10)
-      if (!(port >= 1 && port <= 65535)) { bridge.lastError = "Port must be 1–65535"; return }
+      if (!(port >= 1 && port <= 65535)) { root.bridge.lastError = "Port must be 1–65535"; return }
       if (services.some(function(s) { return s.kind === "port-forward" && s.port === port })) {
-        bridge.lastError = "Port " + port + " is already added"
+        root.bridge.lastError = "Port " + port + " is already added"
         return
       }
       services = services.concat([{ name: name || ("Port " + port), kind: "port-forward", port: port, enabled: true }])
     } else {
       var kind = addServiceKind
       if (services.some(function(s) { return s.kind === kind })) {
-        bridge.lastError = kind + " is already added"
+        root.bridge.lastError = kind + " is already added"
         return
       }
       var labels = { "no-auth-ssh": "SSH (built-in)", "files": "File share", "exit-node": "Exit node" }
       services = services.concat([{ name: name || labels[kind] || kind, kind: kind, port: 0, enabled: true }])
     }
-    bridge.lastError = ""
+    root.bridge.lastError = ""
     addServiceName = ""
   }
 
   // ---- Listener actions ----
   function startOrStop() {
-    if (bridge.listener && bridge.listener.running === true) stopServer()
+    if (root.bridge.listener && root.bridge.listener.running === true) stopServer()
     else startServer()
   }
   function startServer() {
     busyOp = "start"
-    bridge.startServer(services, listenerKey === "new" ? "new" : listenerKey, function() { busyOp = "" })
+    root.bridge.startServer(services, listenerKey === "new" ? "new" : listenerKey, function() { busyOp = "" })
   }
   function stopServer() {
     busyOp = "stop"
-    bridge.stopServer(function() { busyOp = "" })
+    root.bridge.stopServer(function() { busyOp = "" })
   }
   function restartServer() {
     busyOp = "restart"
-    bridge.restartServer(services, listenerKey === "new" ? "new" : listenerKey, function() { busyOp = "" })
+    root.bridge.restartServer(services, listenerKey === "new" ? "new" : listenerKey, function() { busyOp = "" })
   }
 
   // ---- Connect ----
   function runConnect() {
     var t = connectTarget.trim()
-    if (!t) { bridge.lastError = "Paste a tailcat token or DNS name first"; return }
+    if (!t) { root.bridge.lastError = "Paste a tailcat token or DNS name first"; return }
     busyOp = "connect"
-    bridge.ping(t, true, function(res) {
+    root.bridge.ping(t, true, function(res) {
       busyOp = ""
       connectResult = res
-      bridge.lastError = res.ok ? "" : (res.message || "Connect failed")
+      root.bridge.lastError = res.ok ? "" : (res.message || "Connect failed")
     })
   }
   function runValidate() {
     var t = connectTarget.trim()
     if (!t) return
     busyOp = "validate"
-    bridge.validate(t, function(res) {
+    root.bridge.validate(t, function(res) {
       busyOp = ""
       connectResult = res
-      bridge.lastError = res.valid ? "" : (res.message || "Invalid target")
+      root.bridge.lastError = res.valid ? "" : (res.message || "Invalid target")
     })
   }
   function saveCurrentAsDevice() {
     var t = connectTarget.trim()
-    if (!t) { bridge.lastError = "Enter a target first"; return }
+    if (!t) { root.bridge.lastError = "Enter a target first"; return }
     var name = newDeviceName.trim() || shortTarget(t)
-    bridge.addDevice(name, t, function(d) {
-      if (d && d.error) bridge.lastError = d.error.message
+    root.bridge.addDevice(name, t, function(d) {
+      if (d && d.error) root.bridge.lastError = d.error.message
     })
     newDeviceName = ""
   }
@@ -291,21 +293,21 @@ Item {
   // ---- Identities create/delete ----
   function createIdentity() {
     var name = newIdentityName.trim()
-    if (!name) { bridge.lastError = "Enter an identity name"; return }
-    bridge.createIdentity(name, newIdentityClient ? "client" : "server", "", function(d) {
-      if (d && d.error) bridge.lastError = d.error.message
+    if (!name) { root.bridge.lastError = "Enter an identity name"; return }
+    root.bridge.createIdentity(name, newIdentityClient ? "client" : "server", "", function(d) {
+      if (d && d.error) root.bridge.lastError = d.error.message
     })
     newIdentityName = ""
   }
 
   // ---- Render ----
-  Column {
+  ColumnLayout {
     anchors.fill: parent
-    spacing: Style.space(8)
+    spacing: Style.space(6)
 
     PanelHero {
       id: hero
-      width: parent.width
+      Layout.fillWidth: true
       title: "Tailcat"
       meta: heroMeta()
       detail: heroDetail()
@@ -327,16 +329,16 @@ Item {
             fontFamily: root.fontFamily
             fontSize: Style.font.caption
             foreground: root.foreground
-            onClicked: if (bridge.listener && bridge.listener.addr) root.copyText(bridge.listener.addr)
+            onClicked: if (root.bridge.listener && root.bridge.listener.addr) root.copyText(root.bridge.listener.addr)
           }
         }
       }
     }
 
-    // Section tabs
+    // Section tabs (compact so all six fit the popup width)
     Row {
-      width: parent.width
-      spacing: Style.space(4)
+      Layout.fillWidth: true
+      spacing: Style.space(3)
       Repeater {
         model: root.sections
         Button {
@@ -344,40 +346,46 @@ Item {
           selected: index === root.sectionIndex
           fontFamily: root.fontFamily
           fontSize: Style.font.caption
+          horizontalPadding: Style.spacing.sm
           foreground: root.foreground
           accent: root.accent
           onClicked: root.sectionIndex = index
         }
       }
+      Item { Layout.fillWidth: true; height: 1 }
     }
 
-    PanelSeparator { width: parent.width; foreground: root.foreground }
+    PanelSeparator {
+      Layout.fillWidth: true
+      foreground: root.foreground
+    }
 
-    // Error line
+    // Error line (only takes space when present)
     Text {
-      width: parent.width
-      visible: bridge.lastError !== ""
-      text: bridge.lastError
+      Layout.fillWidth: true
+      visible: root.bridge && root.bridge.lastError !== ""
+      text: root.bridge ? root.bridge.lastError : ""
       color: root.urgent
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
     }
 
+    // Content area: exactly the remaining height; each section is a flex layout.
     Item {
-      width: parent.width
-      height: contentHeight()
+      id: content
+      Layout.fillWidth: true
+      Layout.fillHeight: true
       clip: true
 
-      function contentHeight() { return Math.max(1, root.height - hero.height - 90) }
-
-      // ---------------- Dashboard ----------------
-      Column {
+      // ---------------- Status ----------------
+      ColumnLayout {
         visible: root.sectionIndex === 0
-        width: parent.width
+        anchors.fill: parent
         spacing: Style.space(6)
 
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
           Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
@@ -385,12 +393,13 @@ Item {
         }
 
         PanelSectionHeader { text: "STATUS"; foreground: root.foreground }
-        Text { text: root.listenerState.running === true ? "● Running" : "○ Stopped"; color: root.listenerState.running === true ? root.accent : root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.body }
-        Text { text: "Key: " + (root.listenerState.keyInUse || "—") + (root.listenerState.broad === true ? "   ·   serving ALL local ports" : ""); color: root.listenerState.broad === true ? root.urgent : root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-        Text { visible: (root.listenerState.region || "") !== ""; text: "Region: " + root.listenerState.region; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Text { Layout.fillWidth: true; text: root.listenerState.running === true ? "● Running" : "○ Stopped"; color: root.listenerState.running === true ? root.accent : root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+        Text { Layout.fillWidth: true; text: "Key: " + (root.listenerState.keyInUse || "—") + (root.listenerState.broad === true ? "   ·   serving ALL local ports" : ""); color: root.listenerState.broad === true ? root.urgent : root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; visible: (root.listenerState.region || "") !== ""; text: "Region: " + root.listenerState.region; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
 
         PanelSectionHeader { text: "LISTENER IDENTITY"; foreground: root.foreground }
-        Row {
+        Flow {
+          Layout.fillWidth: true
           spacing: Style.space(4)
           Repeater {
             model: root.identityChips()
@@ -405,10 +414,11 @@ Item {
             }
           }
         }
-        Text { text: "Broad: with no services, all localhost ports are reachable through this address."; visible: (root.bridge.listener && root.bridge.listener.broad === true) || root.services.length === 0; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "Broad: with no services, all localhost ports are reachable through this address."; visible: (root.bridge && ((root.bridge.listener && root.bridge.listener.broad === true) || root.services.length === 0)); color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
 
         PanelSectionHeader { text: "LAST RESULT"; foreground: root.foreground }
         Text {
+          Layout.fillWidth: true
           visible: root.connectResult !== null
           text: root.resultLine()
           color: root.connectResult && root.connectResult.ok ? root.accent : root.urgent
@@ -416,17 +426,18 @@ Item {
           font.pixelSize: Style.font.caption
           wrapMode: Text.WordWrap
         }
+        Item { Layout.fillHeight: true } // absorb trailing space
       }
 
       // ---------------- Connect ----------------
-      Column {
+      ColumnLayout {
         visible: root.sectionIndex === 1
-        width: parent.width
+        anchors.fill: parent
         spacing: Style.space(6)
-        Text { text: "Connect to a Tailcat device. Paste a token (tc…) or a DNS name."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "Connect to a Tailcat device. Paste a token (tc…) or a DNS name."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
         TextField {
           id: connectTargetField
-          width: parent.width
+          Layout.fillWidth: true
           placeholderText: "tcXXXXXXXXXX… or device.example.com"
           foreground: root.foreground
           accent: root.accent
@@ -436,18 +447,20 @@ Item {
           Keys.onEscapePressed: root.grabNavFocus()
         }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           Button { text: "Test"; onClicked: root.runValidate() }
           Button { text: "Connect"; onClicked: root.runConnect() }
         }
-        Text { visible: root.connectResult !== null; text: root.resultLine(); color: root.connectResult && root.connectResult.ok ? root.accent : root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-        PanelSeparator { width: parent.width; foreground: root.foreground }
-        Text { text: "Save as device"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Text { Layout.fillWidth: true; visible: root.connectResult !== null; text: root.resultLine(); color: root.connectResult && root.connectResult.ok ? root.accent : root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        PanelSeparator { Layout.fillWidth: true; foreground: root.foreground }
+        Text { Layout.fillWidth: true; text: "Save as device"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           TextField {
             id: saveDeviceField
-            width: parent.parent.width - 90
+            Layout.fillWidth: true
             placeholderText: "Device name (optional)"
             foreground: root.foreground
             accent: root.accent
@@ -457,19 +470,21 @@ Item {
           }
           Button { text: "Save"; onClicked: root.saveCurrentAsDevice() }
         }
+        Item { Layout.fillHeight: true }
       }
 
       // ---------------- Devices ----------------
-      Column {
+      ColumnLayout {
         visible: root.sectionIndex === 2
-        width: parent.width
+        anchors.fill: parent
         spacing: Style.space(6)
-        Text { text: "Saved devices — j/k to move, Enter connect, c copy, p ping, n rename, d remove"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "Saved devices — j/k move, Enter connect, c copy, p ping, n rename, d remove"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
         Flickable {
-          width: parent.width
-          height: Math.min(220, root.height - 140)
+          Layout.fillWidth: true
+          Layout.fillHeight: true
           contentHeight: devCol.implicitHeight
           clip: true
+          boundsBehavior: Flickable.StopAtBounds
           Column {
             id: devCol
             width: parent.width
@@ -520,6 +535,7 @@ Item {
           }
         }
         Row {
+          Layout.fillWidth: true
           visible: root.bridge.devices.length > 0
           spacing: Style.space(6)
           Button { text: "Copy"; onClicked: root.copyDevice() }
@@ -529,11 +545,12 @@ Item {
           Button { text: "Remove"; onClicked: root.removeSelectedDevice() }
         }
         Row {
+          Layout.fillWidth: true
           visible: root.renaming
           spacing: Style.space(6)
           TextField {
             id: renameField
-            width: parent.parent.width - 90
+            Layout.fillWidth: true
             placeholderText: "New name"
             foreground: root.foreground
             accent: root.accent
@@ -544,20 +561,21 @@ Item {
           }
           Button { text: "Save"; onClicked: root.commitRename() }
         }
-        Text { visible: root.bridge.devices.length === 0; text: "No saved devices yet — add one in the Connect tab."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Text { Layout.fillWidth: true; visible: root.bridge.devices.length === 0; text: "No saved devices yet — add one in the Connect tab."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
       }
 
       // ---------------- Identities ----------------
-      Column {
+      ColumnLayout {
         visible: root.sectionIndex === 3
-        width: parent.width
+        anchors.fill: parent
         spacing: Style.space(6)
-        Text { text: "Identities — j/k move, Enter use for listener, c create, d delete. Persistent identities keep a stable address."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "Identities — j/k move, Enter use, c create, d delete. Persistent identities keep a stable address."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
         Flickable {
-          width: parent.width
-          height: Math.min(160, root.height - 220)
+          Layout.fillWidth: true
+          Layout.fillHeight: true
           contentHeight: idCol.implicitHeight
           clip: true
+          boundsBehavior: Flickable.StopAtBounds
           Column {
             id: idCol
             width: parent.width
@@ -601,10 +619,11 @@ Item {
         }
         PanelSectionHeader { text: "CREATE"; foreground: root.foreground }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           TextField {
             id: newIdentityField
-            width: parent.parent.width - 110
+            Layout.fillWidth: true
             placeholderText: "Identity name"
             foreground: root.foreground
             accent: root.accent
@@ -615,6 +634,7 @@ Item {
           Button { text: "Create"; onClicked: root.createIdentity() }
         }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           Toggle {
             label: "Client identity"
@@ -624,6 +644,7 @@ Item {
           }
         }
         Button {
+          Layout.fillWidth: true
           visible: root.selectedIdentity() && root.selectedIdentity().persistent && root.selectedIdentity().name !== "new"
           text: "Delete “" + (root.selectedIdentity() ? root.selectedIdentity().name : "") + "”"
           onClicked: root.deleteSelectedIdentity()
@@ -631,16 +652,17 @@ Item {
       }
 
       // ---------------- Services ----------------
-      Column {
+      ColumnLayout {
         visible: root.sectionIndex === 4
-        width: parent.width
+        anchors.fill: parent
         spacing: Style.space(6)
-        Text { text: "Shared services — what the listener serves. j/k move, Space toggle, a add, d remove."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "Shared services — what the listener serves. j/k move, Space toggle, a add, d remove."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
         Flickable {
-          width: parent.width
-          height: Math.min(160, root.height - 250)
+          Layout.fillWidth: true
+          Layout.fillHeight: true
           contentHeight: svcCol.implicitHeight
           clip: true
+          boundsBehavior: Flickable.StopAtBounds
           Column {
             id: svcCol
             width: parent.width
@@ -684,10 +706,11 @@ Item {
         }
         PanelSectionHeader { text: "ADD SERVICE"; foreground: root.foreground }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           TextField {
             id: addServiceField
-            width: parent.parent.width - 130
+            Layout.fillWidth: true
             placeholderText: "Name (optional)"
             foreground: root.foreground
             accent: root.accent
@@ -698,6 +721,7 @@ Item {
           Button { text: "Add"; onClicked: root.addService() }
         }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           Button {
             text: root.addServiceKind === "port-forward" ? "TCP port" : root.addServiceKind
@@ -715,30 +739,32 @@ Item {
           }
           Button { text: "Remove sel"; onClicked: root.removeSelectedService() }
         }
-        Text { text: "No services: the listener serves ALL localhost ports (broad). Add explicit services to restrict it."; visible: root.services.length === 0; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "No services: the listener serves ALL localhost ports (broad). Add explicit services to restrict it."; visible: root.services.length === 0; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       }
 
       // ---------------- Diagnostics ----------------
-      Column {
+      ColumnLayout {
         visible: root.sectionIndex === 5
-        width: parent.width
+        anchors.fill: parent
         spacing: Style.space(6)
-        Text { text: "Diagnostics — r refreshes"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
-        Text { text: "Tailcat: " + (root.bridge.available ? (root.bridge.version + (root.bridge.minOK ? "" : "  (older than supported)")) : "not installed"); color: root.bridge.available ? root.foreground : root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.body; wrapMode: Text.WordWrap }
-        Text { visible: root.bridge.versionError !== ""; text: root.bridge.versionError; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-        Text { text: "Backend: cli adapter"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
-        Text { text: "Listener: " + (root.bridge.listener && root.bridge.listener.running === true ? "running" : "stopped"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.body }
+        Text { Layout.fillWidth: true; text: "Diagnostics — r refreshes"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Text { Layout.fillWidth: true; text: "Tailcat: " + (root.bridge.available ? (root.bridge.version + (root.bridge.minOK ? "" : "  (older than supported)")) : "not installed"); color: root.bridge.available ? root.foreground : root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.body; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; visible: root.bridge.versionError !== ""; text: root.bridge.versionError; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; text: "Backend: cli adapter"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Text { Layout.fillWidth: true; text: "Listener: " + (root.bridge.listener && root.bridge.listener.running === true ? "running" : "stopped"); color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.body }
         Row {
+          Layout.fillWidth: true
           spacing: Style.space(6)
           Button { text: "Refresh"; onClicked: root.bridge.refreshDiagnostics() }
           Button { text: root.showDetails ? "Hide details" : "Details"; onClicked: root.showDetails = !root.showDetails }
         }
         Flickable {
           visible: root.showDetails
-          width: parent.width
-          height: 150
+          Layout.fillWidth: true
+          Layout.fillHeight: true
           contentHeight: logCol.implicitHeight
           clip: true
+          boundsBehavior: Flickable.StopAtBounds
           Column {
             id: logCol
             width: parent.width
@@ -756,6 +782,7 @@ Item {
             }
           }
         }
+        Item { visible: !root.showDetails; Layout.fillHeight: true }
       }
     }
   }
@@ -763,8 +790,8 @@ Item {
   function identityChips() {
     var out = []
     out.push({ key: "new", name: "Ephemeral", selected: root.listenerKey === "new" })
-    for (var i = 0; i < bridge.identities.length; i++) {
-      var idn = bridge.identities[i]
+    for (var i = 0; i < root.bridge.identities.length; i++) {
+      var idn = root.bridge.identities[i]
       if (idn.persistent && idn.name !== "new" && idn.kind !== "client") {
         out.push({ key: idn.name, name: idn.name, selected: root.listenerKey === idn.name })
       }
@@ -773,15 +800,15 @@ Item {
   }
 
   function heroMeta() {
-    if (!bridge.available) return "TAILCAT NOT INSTALLED"
-    var st = bridge.listener || {}
+    if (!root.bridge.available) return "TAILCAT NOT INSTALLED"
+    var st = root.bridge.listener || {}
     if (st.running === true) return "RUNNING · " + (st.keyInUse || "ephemeral")
     return "READY"
   }
 
   function heroDetail() {
-    if (!bridge.available) return "Install `tailcat` (e.g. paru -S tailcat) and restart"
-    var st = bridge.listener || {}
+    if (!root.bridge.available) return "Install `tailcat` (e.g. paru -S tailcat) and restart"
+    var st = root.bridge.listener || {}
     if (st.running === true && st.addr) return shortTarget(st.addr)
     return "No listener running"
   }
