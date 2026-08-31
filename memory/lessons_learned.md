@@ -30,6 +30,35 @@ Status: active
 
 ---
 
+### 2026-08-31 — QML layout rules that must not be mixed (caused the "版面乱")
+
+Type: lesson
+
+Summary:
+The Manager popup's layout was rebuilt twice for "版面乱". Root causes and the
+strict rules that fixed it:
+
+- ColumnLayout children must NEVER also use `anchors.fill` (layout engine and
+  anchors fight; content scrambles). Use Layout.fillWidth/fillHeight only.
+- Row/Column positioner children must never use Layout.* (`Item {
+  Layout.fillWidth: true }` inside a Row is invalid); size them with `width:`.
+- Don't give a Flickable `Layout.fillHeight` inside a page where other rows
+  must stay visible (it eats all remaining space and pushes them out); instead
+  wrap the WHOLE page in one Flickable (contentHeight = inner Column
+  implicitHeight) so tall content scrolls and short content sits naturally.
+- Content area = a plain `Item` with fillWidth+fillHeight+clip; each page is a
+  Flickable anchored inside it.
+- Findings come from 0-warnings live-shell journal (the broken version logged
+  layout/anchor warnings every load).
+
+Action:
+Follow these rules in every Quickshell panel; validate with the harness and
+journal before declaring a layout done.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Embedded (full-address) tailcat tokens break DERP routing; use short tokens
 
 Type: lesson
