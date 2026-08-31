@@ -197,4 +197,121 @@ Item {
   function deleteIdentity(name, onSuccess) {
     run(["identities", "delete", String(name || "")], function(data) { if (onSuccess) onSuccess(data); refresh() })
   }
+
+  // ---- V0.2 file transfer ----
+
+  property var fileRecvState: ({ running: false })
+  property var fileRecvPending: []
+  property var fileRecvDone: []
+
+  property bool sendActive: false
+  property int sendSent: 0
+  property int sendTotal: 0
+  property string sendFile: ""
+  property string sendResult: ""
+
+  function fileRecvStart(dir, key, onSuccess) {
+    var args = ["file", "recv-start"]
+    if (dir && dir !== "") args.push("--dir=" + dir)
+    if (key && key !== "" && key !== "new") args.push("--key=" + key)
+    run(args, function(data) {
+      fileRecvState = data || {}
+      if (onSuccess) onSuccess(data)
+      refreshFileRecv()
+    }, function() { refreshFileRecv() })
+  }
+
+  function fileRecvStop() {
+    run(["file", "recv-stop"], function() {
+      fileRecvState = { running: false }
+      fileRecvPending = []
+      fileRecvDone = []
+    })
+  }
+
+  function refreshFileRecv() {
+    run(["file", "recv-status"], function(data) {
+      if (!data) return
+      fileRecvState = data
+      fileRecvPending = data.pending || []
+      fileRecvDone = data.done || []
+    })
+  }
+
+  function fileRecvRespond(id, accept, dest) {
+    var args = ["file", "recv-respond", String(id || ""), accept ? "accept" : "reject"]
+    if (accept && dest) args.push(String(dest))
+    run(args, function() { refreshFileRecv() }, function() { refreshFileRecv() })
+  }
+
+  function fileSend(target, path, name) {
+    if (sendActive) return
+    sendActive = true
+    sendSent = 0
+    sendTotal = 0
+    sendFile = name || path
+    sendResult = ""
+    sendBuf = sendOut.text || ""
+    var args = ["file", "send", String(target || ""), String(path || "")]
+    if (name && name !== "") args.push("--name=" + name)
+    sendProc.command = [root.backendCmd].concat(args)
+    sendProc.running = true
+  }
+
+  function cancelSend() {
+    if (sendProc) sendProc.running = false
+    sendActive = false
+    sendResult = "Cancelled"
+  }
+
+  property string sendBuf: ""
+  function parseSendOutput() {
+    var t = sendOut.text || ""
+    if (t.length < sendBuf.length) sendBuf = ""
+    var newText = t.substring(sendBuf.length)
+    sendBuf = t
+    var lines = String(newText).split("\n")
+    for (var i = 0; i < lines.length; i++) {
+      var line = String(lines[i]).trim()
+      if (line === "") continue
+      var obj = null
+      try { obj = JSON.parse(line) } catch (e) { continue }
+      if (obj.type === "progress") {
+        sendSent = Number(obj.sent || 0)
+        sendTotal = Number(obj.total || 0)
+      } else if (obj.type === "done") {
+        sendResult = "Sent · " + (obj.sha256 ? obj.sha256.substr(0, 8) : "") + " · " + fmtBytes(obj.bytes)
+      } else if (obj.type === "error") {
+        lastError = obj.message || "Send failed"
+        lastDetail = obj.detail || ""
+        sendResult = lastError
+      }
+    }
+  }
+
+  function sendFinished(exitCode) {
+    sendActive = false
+    if (exitCode !== 0 && sendResult === "" && lastError !== "") sendResult = lastError
+    refresh()
+  }
+
+  function fmtBytes(n) {
+    var v = Number(n || 0)
+    if (v >= 1 << 30) return (v / (1 << 30)).toFixed(1) + " GB"
+    if (v >= 1 << 20) return (v / (1 << 20)).toFixed(1) + " MB"
+    if (v >= 1 << 10) return (v / (1 << 10)).toFixed(1) + " KB"
+    return v + " B"
+  }
+
+  Process {
+    id: sendProc
+    running: false
+    stdout: StdioCollector {
+      id: sendOut
+      waitForEnd: false
+      onDataChanged: root.parseSendOutput()
+    }
+    stderr: StdioCollector { waitForEnd: false }
+    onExited: function(code) { root.sendFinished(code) }
+  }
 }

@@ -44,7 +44,7 @@ func recv() {
 	fs.Parse(os.Args[2:])
 
 	recv, blob, err := tailcat.StartReceiver(context.Background(), key.NodePrivate{},
-		tailcat.ReceiverOptions{DERPMapURL: *derpMapURL},
+		tailcat.ReceiverOptions{DERPMapURL: *derpMapURL, Logf: log.Printf},
 		tailcat.ReceiveOptions{
 			Decide: func(in tailcat.IncomingFile) (string, bool) {
 				fmt.Fprintf(os.Stderr, "offer %s (%d bytes) from %s -> %s\n", in.Name, in.Size, in.Sender, filepath.Join(*outdir, in.Name))

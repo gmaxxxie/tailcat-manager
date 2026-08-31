@@ -25,7 +25,7 @@ Item {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   // Sections
-  property var sections: ["Status", "Connect", "Devices", "Identities", "Services", "Diag"]
+  property var sections: ["Status", "Connect", "Devices", "Identities", "Services", "Files", "Diag"]
   property int sectionIndex: 0
 
   // Cursors for lists
@@ -59,6 +59,12 @@ Item {
   // Diagnostics
   property bool showDetails: false
 
+  // Files (V0.2) state
+  property int offerCursor: 0
+  property string recvDir: ""
+  property string sendTarget: ""
+  property string sendPath: ""
+
   // Operations
   property string busyOp: ""   // what's running (for button feedback)
   property var pendingPing: null
@@ -72,6 +78,16 @@ Item {
     repeat: true
     onTriggered: if (root.bridge && !root.bridge.busy) root.bridge.refresh()
   }
+
+  // Poll the file receiver state while the Files section is open.
+  Timer {
+    interval: 1000
+    running: root.opened && root.sectionIndex === 5
+    repeat: true
+    onTriggered: if (root.bridge && !root.bridge.busy) root.bridge.refreshFileRecv()
+  }
+
+  onSectionIndexChanged: if (root.sectionIndex === 5 && root.bridge) root.bridge.refreshFileRecv()
 
   onOpenedChanged: {
     if (opened) Qt.callLater(function() {
@@ -183,6 +199,13 @@ Item {
         else if (key === Qt.Key_A) { addServiceField.forceActiveFocus(); event.accepted = true }
         else if (key === Qt.Key_Space) { toggleSelectedService(); event.accepted = true }
         else if (key === Qt.Key_D) { removeSelectedService(); event.accepted = true }
+        break
+      case 5: // Files
+        if (key === Qt.Key_J || key === Qt.Key_Down) { moveOfferCursor(1); event.accepted = true }
+        else if (key === Qt.Key_K || key === Qt.Key_Up) { moveOfferCursor(-1); event.accepted = true }
+        else if (key === Qt.Key_A) { acceptSelectedOffer(); event.accepted = true }
+        else if (key === Qt.Key_R) { rejectSelectedOffer(); event.accepted = true }
+        else if (key === Qt.Key_S) { sendPathField.forceActiveFocus(); event.accepted = true }
         break
       }
     }
@@ -742,9 +765,192 @@ Item {
         Text { Layout.fillWidth: true; text: "No services: the listener serves ALL localhost ports (broad). Add explicit services to restrict it."; visible: root.services.length === 0; color: root.urgent; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       }
 
-      // ---------------- Diagnostics ----------------
+      // ---------------- Files (V0.2) --------------
       ColumnLayout {
         visible: root.sectionIndex === 5
+        anchors.fill: parent
+        spacing: Style.space(6)
+
+        PanelSectionHeader { text: "RECEIVE"; foreground: root.foreground }
+        Row {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          Button {
+            text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
+            onClicked: root.toggleRecv()
+          }
+          TextField {
+            id: recvDirField
+            Layout.fillWidth: true
+            placeholderText: "Receive dir (default ~/Downloads)"
+            foreground: root.foreground
+            accent: root.accent
+            text: root.recvDir
+            onTextChanged: root.recvDir = text
+          }
+        }
+        Row {
+          visible: root.bridge.fileRecvState && root.bridge.fileRecvState.addr !== ""
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          Text {
+            Layout.fillWidth: true
+            text: "Addr: " + root.shortTarget(root.bridge.fileRecvState.addr)
+            color: root.accent
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideMiddle
+          }
+          Button { text: "Copy"; onClicked: root.copyText(root.bridge.fileRecvState.addr) }
+        }
+
+        Text { Layout.fillWidth: true; text: "Incoming — j/k move, a accept, r reject"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
+        Flickable {
+          Layout.fillWidth: true
+          Layout.fillHeight: true
+          contentHeight: offerCol.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+          Column {
+            id: offerCol
+            width: parent.width
+            spacing: Style.space(4)
+            Repeater {
+              model: root.bridge.fileRecvPending
+              Rectangle {
+                width: parent.width
+                height: offerBox.implicitHeight + Style.space(8)
+                radius: Style.cornerRadius
+                color: index === root.offerCursor ? Util.alpha(root.foreground, 0.10) : "transparent"
+                Column {
+                  id: offerBox
+                  anchors.fill: parent
+                  anchors.margins: Style.space(4)
+                  spacing: Style.space(3)
+                  Row {
+                    spacing: Style.space(6)
+                    Text {
+                      width: parent.parent.width * 0.55
+                      text: modelData.name
+                      color: root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.body
+                      elide: Text.ElideRight
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: root.bridge.fmtBytes(modelData.size) + (modelData.state === "transferring" ? "  ·  " + root.bridge.fmtBytes(modelData.sent) : "")
+                      color: root.dim
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+                  }
+                  Text {
+                    width: parent.width
+                    text: "from " + (modelData.sender || "?")
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                  Rectangle {
+                    visible: modelData.state === "transferring" && modelData.size > 0
+                    width: parent.width
+                    height: 4
+                    radius: 2
+                    color: Util.alpha(root.foreground, 0.15)
+                    Rectangle {
+                      width: parent.width * Math.max(0, Math.min(1, modelData.sent / modelData.size))
+                      height: parent.height
+                      radius: 2
+                      color: root.accent
+                    }
+                  }
+                  Row {
+                    visible: modelData.state === "offered"
+                    spacing: Style.space(6)
+                    Button { text: "Accept"; onClicked: root.bridge.fileRecvRespond(modelData.id, true, "") }
+                    Button { text: "Reject"; onClicked: root.bridge.fileRecvRespond(modelData.id, false, "") }
+                  }
+                }
+              }
+            }
+            Text {
+              visible: root.bridge.fileRecvPending.length === 0
+              text: "No incoming transfers"
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+          }
+        }
+        Text {
+          Layout.fillWidth: true
+          visible: root.bridge.fileRecvDone.length > 0
+          text: "Completed: " + root.bridge.fileRecvDone.map(function(d) { return d.name + (d.ok ? " ✓" : " ✗") }).join("  ·  ")
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideRight
+        }
+
+        PanelSectionHeader { text: "SEND"; foreground: root.foreground }
+        Row {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          TextField {
+            id: sendTargetField
+            Layout.fillWidth: true
+            placeholderText: "Target tc… (or pick a device)"
+            foreground: root.foreground
+            accent: root.accent
+            text: root.sendTarget
+            onTextChanged: root.sendTarget = text
+          }
+          Button { text: "Device"; onClicked: root.useDeviceForSend() }
+        }
+        Row {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          TextField {
+            id: sendPathField
+            Layout.fillWidth: true
+            placeholderText: "File path"
+            foreground: root.foreground
+            accent: root.accent
+            text: root.sendPath
+            onTextChanged: root.sendPath = text
+            onAccepted: root.doSendFile()
+          }
+          Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
+          Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
+        }
+        Rectangle {
+          visible: root.bridge.sendActive
+          Layout.fillWidth: true
+          height: 6
+          radius: 3
+          color: Util.alpha(root.foreground, 0.15)
+          Rectangle {
+            width: parent.width * root.sendPct()
+            height: parent.height
+            radius: 3
+            color: root.accent
+          }
+        }
+        Text {
+          Layout.fillWidth: true
+          visible: root.bridge.sendActive || root.bridge.sendResult !== ""
+          text: root.bridge.sendActive ? (root.bridge.sendFile + "  ·  " + root.bridge.fmtBytes(root.bridge.sendSent) + " / " + root.bridge.fmtBytes(root.bridge.sendTotal)) : root.bridge.sendResult
+          color: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideRight
+        }
+      }
+
+      // ---------------- Diagnostics ----------------
+      ColumnLayout {
+        visible: root.sectionIndex === 6
         anchors.fill: parent
         spacing: Style.space(6)
         Text { Layout.fillWidth: true; text: "Diagnostics — r refreshes"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption }
@@ -830,6 +1036,28 @@ Item {
     var kinds = ["port-forward", "no-auth-ssh", "files", "exit-node"]
     var i = kinds.indexOf(addServiceKind)
     addServiceKind = kinds[(i + 1) % kinds.length]
+  }
+
+  // ---- Files (V0.2) ----
+  function moveOfferCursor(d) { offerCursor = clamp(offerCursor + d, 0, Math.max(0, root.bridge.fileRecvPending.length - 1)) }
+  function selectedOffer() { return root.bridge.fileRecvPending.length ? root.bridge.fileRecvPending[offerCursor] : null }
+  function acceptSelectedOffer() { var o = selectedOffer(); if (o && o.state === "offered") root.bridge.fileRecvRespond(o.id, true, "") }
+  function rejectSelectedOffer() { var o = selectedOffer(); if (o && o.state === "offered") root.bridge.fileRecvRespond(o.id, false, "") }
+  function toggleRecv() {
+    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) root.bridge.fileRecvStop()
+    else root.bridge.fileRecvStart(recvDir, "")
+  }
+  function useDeviceForSend() { var d = selectedDevice(); if (d) sendTarget = d.target }
+  function doSendFile() {
+    var t = sendTarget.trim()
+    var p = sendPath.trim()
+    if (!t) { root.bridge.lastError = "Enter a target (paste a token or pick a device)"; return }
+    if (!p) { root.bridge.lastError = "Enter a file path"; return }
+    root.bridge.fileSend(t, p, "")
+  }
+  function sendPct() {
+    if (root.bridge.sendTotal <= 0) return 0
+    return Math.max(0, Math.min(1, root.bridge.sendSent / root.bridge.sendTotal))
   }
 
   // Confirm dialogs

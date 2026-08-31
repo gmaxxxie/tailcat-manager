@@ -239,7 +239,7 @@ func TestProtocolProgress(t *testing.T) {
 		defer wg.Done()
 		_, _ = tailcat.ReceiveFileStream(receiver, tailcat.ReceiveOptions{
 			Decide:   func(in tailcat.IncomingFile) (string, bool) { return filepath.Join(dir, in.Name), true },
-			Progress: func(sent, total int64) {},
+			Progress: func(id string, sent, total int64) {},
 		})
 	}()
 	var lastSent atomicInt64

@@ -224,8 +224,17 @@ type ReceiveOptions struct {
 	// Returning ok=false rejects. Decide runs on the connection handler
 	// goroutine; it must return promptly (wire to a UI/queue).
 	Decide func(IncomingFile) (dest string, ok bool)
-	// Progress (optional) receives byte updates.
-	Progress ProgressFunc
+	// Progress (optional) receives byte updates, tagged with the offer id.
+	Progress func(id string, sent, total int64)
+	// OnResult (optional) reports the terminal outcome of a connection.
+	OnResult func(in IncomingFile, res TransferResult)
+}
+
+// finishRecv reports the outcome to OnResult (if set).
+func (o ReceiveOptions) finish(in IncomingFile, res TransferResult) {
+	if o.OnResult != nil {
+		o.OnResult(in, res)
+	}
 }
 
 // ReceiveFileStream drives the receiver side: read offer → decide → accept/
@@ -245,7 +254,9 @@ func ReceiveFileStream(c net.Conn, opts ReceiveOptions) (TransferResult, error) 
 	}
 	if in.Name, err = safeBase(in.Name); err != nil {
 		_ = writeMsg(c, wireMsg{V: protoV, Op: "reject", Message: err.Error()})
-		return TransferResult{}, err
+		res := TransferResult{Error: err.Error()}
+		opts.finish(in, res)
+		return res, err
 	}
 	if opts.Decide == nil {
 		opts.Decide = func(IncomingFile) (string, bool) { return "", false }
@@ -253,7 +264,9 @@ func ReceiveFileStream(c net.Conn, opts ReceiveOptions) (TransferResult, error) 
 	dest, ok := opts.Decide(in)
 	if !ok {
 		_ = writeMsg(c, wireMsg{V: protoV, Op: "reject", Message: "rejected"})
-		return TransferResult{}, errors.New("rejected")
+		res := TransferResult{Error: "rejected"}
+		opts.finish(in, res)
+		return res, errors.New("rejected")
 	}
 	if err := writeMsg(c, wireMsg{V: protoV, Op: "accept"}); err != nil {
 		return TransferResult{}, err
@@ -261,15 +274,21 @@ func ReceiveFileStream(c net.Conn, opts ReceiveOptions) (TransferResult, error) 
 	// Write to dest safely: never follow symlinks, refuse existing (O_EXCL)
 	// unless the UI explicitly chose to overwrite (dest already resolved).
 	if err := os.MkdirAll(filepath.Dir(dest), 0700); err != nil {
-		_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: "destination not writable"})
-		return TransferResult{}, err
+		msg := "destination not writable"
+		_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: msg})
+		res := TransferResult{Error: msg}
+		opts.finish(in, res)
+		return res, err
 	}
 	flag := os.O_WRONLY | os.O_CREATE | os.O_EXCL
 	f, err := os.OpenFile(dest, flag, 0600)
 	if err != nil {
 		// Collision not resolved by the UI: refuse rather than overwrite.
-		_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: "destination exists: " + filepath.Base(dest)})
-		return TransferResult{}, err
+		msg := "destination exists: " + filepath.Base(dest)
+		_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: msg})
+		res := TransferResult{File: dest, Error: msg}
+		opts.finish(in, res)
+		return res, err
 	}
 	defer f.Close()
 	h := sha256.New()
@@ -280,30 +299,41 @@ func ReceiveFileStream(c net.Conn, opts ReceiveOptions) (TransferResult, error) 
 		n, rerr := tr.Read(buf)
 		if n > 0 {
 			if _, werr := f.Write(buf[:n]); werr != nil {
-				_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: "write failed"})
-				return TransferResult{}, werr
+				msg := "write failed"
+				_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: msg})
+				res := TransferResult{File: dest, Bytes: received, Error: msg}
+				opts.finish(in, res)
+				return res, werr
 			}
 			received += int64(n)
 			if opts.Progress != nil {
-				opts.Progress(received, in.Size)
+				opts.Progress(in.ID, received, in.Size)
 			}
 		}
 		if rerr == io.EOF {
 			break
 		}
 		if rerr != nil {
-			_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: "read failed"})
-			return TransferResult{}, rerr
+			msg := "read failed"
+			_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: msg})
+			res := TransferResult{File: dest, Bytes: received, Error: msg}
+			opts.finish(in, res)
+			return res, rerr
 		}
 	}
 	got := hex.EncodeToString(h.Sum(nil))
 	if in.SHA256 != "" && !strings.EqualFold(in.SHA256, got) {
-		_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: "integrity mismatch"})
+		msg := "integrity mismatch"
+		_ = writeMsg(c, wireMsg{V: protoV, Op: "error", Message: msg})
 		os.Remove(dest)
-		return TransferResult{}, errors.New("integrity mismatch")
+		res := TransferResult{File: dest, Bytes: received, Error: msg}
+		opts.finish(in, res)
+		return res, errors.New("integrity mismatch")
 	}
 	_ = writeMsg(c, wireMsg{V: protoV, Op: "done", SHA256: got})
-	return TransferResult{OK: true, File: dest, Bytes: received, SHA256: got}, nil
+	res := TransferResult{OK: true, File: dest, Bytes: received, SHA256: got}
+	opts.finish(in, res)
+	return res, nil
 }
 
 // --- Native dial / server helpers -----------------------------------------
@@ -340,13 +370,38 @@ func SendFileToToken(ctx context.Context, token, derpMapURL, path, name string, 
 }
 
 // DialToken opens the transfer-port stream to the server named by token,
-// establishing the tunnel lazily.
+// establishing the tunnel lazily. It retries the initial meow handshake until
+// it succeeds or ctx expires: a freshly started receiver may still be coming
+// up on DERP when we dial, and a single lost handshake would otherwise fail
+// the transfer.
 func DialToken(ctx context.Context, token, derpMapURL string) (net.Conn, *tailcat.Client, error) {
 	cl := tailcat.NewClient(tailcat.ConnBlob(token))
 	if derpMapURL != "" {
 		cl.DERPMapURL = derpMapURL
 	}
 	cl.Logf = logger.Discard
+	if ctx.Err() != nil {
+		cl.Close()
+		return nil, nil, ctx.Err()
+	}
+	for {
+		pctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		_, err := cl.Ping(pctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			cl.Close()
+			return nil, nil, err
+		}
+		select {
+		case <-time.After(500 * time.Millisecond):
+		case <-ctx.Done():
+			cl.Close()
+			return nil, nil, ctx.Err()
+		}
+	}
 	c, err := cl.DialTCPPort(ctx, TransferPort)
 	if err != nil {
 		cl.Close()
@@ -362,6 +417,8 @@ type ReceiverOptions struct {
 	// Region, if set, is used directly (no map fetch); mutually exclusive
 	// with DERPMapURL.
 	Region *tailcfg.DERPRegion
+	// Logf, if non-nil, receives server diagnostics (default: discard).
+	Logf logger.Logf
 }
 
 // Receiver is a long-running native file receiver (a tailcat.Server with the
@@ -375,11 +432,38 @@ type Receiver struct {
 
 // StartReceiver builds and starts a native Server that accepts file offers on
 // TransferPort. priv may be zero (ephemeral identity).
+//
+// The returned conn blob is a SHORT token (region-ID reference), matching the
+// CLI server's default: embedded (full-address) regions are restored to
+// RegionID 1 by ParseConnBlob and break DERP routing for any real region
+// (upstream quirk), so we let clients resolve the region via the DERP map.
 func StartReceiver(ctx context.Context, priv key.NodePrivate, opts ReceiverOptions, ropts ReceiveOptions) (*Receiver, string, error) {
+	if priv.IsZero() {
+		priv = key.NewNode()
+	}
+	logf := opts.Logf
+	if logf == nil {
+		logf = logger.Discard
+	}
+	// Resolve the bootstrap region so we can emit a short token referencing it.
+	var reg *tailcfg.DERPRegion
+	if opts.Region != nil {
+		reg = opts.Region
+	} else {
+		ci := &tailcat.ConnInfo{RegionID: -1}
+		exopts := []any{tailcat.ExpandForServer}
+		if opts.DERPMapURL != "" {
+			exopts = append(exopts, tailcat.DERPMapURL(opts.DERPMapURL))
+		}
+		if err := ci.Expand(ctx, exopts...); err != nil {
+			return nil, "", err
+		}
+		reg = ci.Region[0]
+	}
 	s := &tailcat.Server{
 		Key:        priv,
-		Logf:       logger.Discard,
-		Region:     opts.Region,
+		Logf:       logf,
+		Region:     reg,
 		DERPMapURL: opts.DERPMapURL,
 		OnTCP: func(port uint16) func(net.Conn) {
 			if port != TransferPort {
@@ -393,7 +477,12 @@ func StartReceiver(ctx context.Context, priv key.NodePrivate, opts ReceiverOptio
 	if err := s.Start(); err != nil {
 		return nil, "", err
 	}
-	return &Receiver{srv: s, opts: ropts}, string(s.ConnBlob()), nil
+	tok := (&tailcat.ConnInfo{
+		ServerPublic:      tailcat.NodePublic{NodePublic: priv.Public()},
+		ServerDiscoPublic: tailcat.DiscoPublicForNode(priv),
+		RegionID:          reg.RegionID,
+	}).ConnBlob()
+	return &Receiver{srv: s, opts: ropts}, string(tok), nil
 }
 
 // Close stops the receiver.
