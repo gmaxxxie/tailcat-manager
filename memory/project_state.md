@@ -133,3 +133,12 @@
   popup) — verified via right-edge crop of the popup (popup hangs over the
   bar; its right half is unobstructed) and by `journalctl grep polish`
   (4620 -> 0).
+- **Published to GitHub (2026-08-31):** `github.com/gmaxxxie/tailcat-manager`
+  (public, branch master). One-line installer:
+  `curl -sL https://raw.githubusercontent.com/gmaxxxie/tailcat-manager/master/quick-install.sh | bash`
+  — downloads prebuilt backend from Release `v0.1.0` (`omarchy-tailcat-<arch>-linux`,
+  no Go needed), falls back to source build, installs backend to ~/.local/bin,
+  and on Omarchy installs+enables the bar widget. Verified end-to-end locally
+  (prebuilt path + fallback). NOTE: raw.githubusercontent.com CDN-cached old
+  script versions for a few minutes after push — wait ~2 min before testing a
+  freshly pushed script, and verify md5 vs local.
