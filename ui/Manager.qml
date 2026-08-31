@@ -126,8 +126,6 @@ Item {
     interval: 1000
     repeat: true
     running: true
-    onTriggered: console.log("DBG2 sec=" + (root?root.sectionIndex:-1) + " b=" + (bStart?bStart.visible:-1) + " chain=" + (bStart?parentVis(bStart,8):"") + " homeV=" + (homeCol?homeCol.visible:-1) + " rl=" + (bStart&&bStart.parent?bStart.parent.visible:-1))
-  }
 
   onOpenedChanged: {
     if (opened) Qt.callLater(function() {
