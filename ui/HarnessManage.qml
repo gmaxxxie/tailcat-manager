@@ -25,7 +25,7 @@ Window {
     onCloseRequested: Qt.quit()
   }
 
-  Timer { interval: 8000; onTriggered: Qt.quit() }
+  Timer { interval: 8000; running: true; onTriggered: Qt.quit() }
 
   Component.onCompleted: bridge.refresh()
 }

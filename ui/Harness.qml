@@ -38,6 +38,7 @@ Window {
 
   Timer {
     interval: 6000
+    running: true
     onTriggered: Qt.quit()
   }
 

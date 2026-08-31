@@ -4,6 +4,30 @@
 
 ### Status: V0.1 + V0.2 done & live; UI restructured (Home command panel + Manage); widget-failure bug fixed
 
+- **Overall test + UI optimization pass (2026-09-01) — DONE, pushed:**
+  - Full backend suite green (unit + hermetic e2e incl. real-DERP file transfer,
+    SHA-verified); all QML harnesses clean (Harness/HarnessManage/HarnessPanel/
+    HarnessFile) and now self-quit (their quit Timers were missing `running: true`).
+  - Fixed: `root.fmtBytes` was called in Manager.qml but only defined in the
+    bridge — would break RECEIVE offer size + SEND progress text the moment a
+    transfer ran; added the function to Manager.
+  - Fixed: `heroMeta()` gated on the file receiver, so a running listener alone
+    showed "READY"; now listener→"RUNNING·key", receiver-only→"RECEIVING".
+  - Fixed: backend `file recv-stop`/`recv-status` left a stale `addr` in state,
+    so the UI kept showing a dead "Share: … + Copy" row after stopping the
+    receiver; now addr is cleared. Regression test `TestFileRecvStopClearsAddr`.
+  - Fixed: RECEIVE Share-row `visible` used `addr !== ""`; backend omits addr
+    (undefined) when stopped, and `undefined !== ""` is true → row showed
+    empty; now `!!addr` (also kills the "Unable to assign [undefined] to bool"
+    QML warning).
+  - Improved: identity chips (Key: Ephemeral + saved server keys) rendered on
+    Home LISTENER so you can pick a listener identity and return to ephemeral
+    (`identityChips()` was defined but never rendered); device chips now show
+    ALL saved devices in a wrapping Flow and the opaque "Use device" button was
+    removed; recv-dir placeholder + waiting line show the effective dir
+    (default ~/Downloads); stale `lastError` clears at the start of every
+    backend call; bar shows `󰞀 ⇩` while only the receiver is running.
+
 - **Widget-loading regression (2026-08-31 late) — FIXED:** the cleanup commit
   (82686b9) left an orphaned debug `Timer {` header, swallowing all subsequent
   root handlers → QML parse error (Expected token `}'` at EOF) → Manager

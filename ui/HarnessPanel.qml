@@ -44,6 +44,6 @@ Item {
     }
   }
 
-  Timer { interval: 6000; onTriggered: Qt.quit() }
+  Timer { interval: 6000; running: true; onTriggered: Qt.quit() }
   Component.onCompleted: bridge.refresh()
 }

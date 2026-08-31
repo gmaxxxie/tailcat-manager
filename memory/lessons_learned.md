@@ -1,5 +1,38 @@
 # Lessons Learned
 
+### 2026-09-01 — QML: `!== ""` is a trap for backend-omitted fields; function lookup is lexical
+
+Type: lesson
+
+Summary:
+Two QML bugs from the overall-test pass: (1) a backend JSON field with
+`omitempty` is `undefined` in QML, and `undefined !== ""` is `true`, so a
+`visible: x.addr !== ""` check still shows an empty row — use truthiness
+(`!!x.addr`), which also avoids "Unable to assign [undefined] to bool".
+(2) `root.fmtBytes(...)` fails at runtime if the function is only defined on
+the bridge, not the Manager — QML has no cross-object fallback for method
+lookup; every helper used in a component's bindings must live in that
+component (or be reached through the explicit `bridge.` object).
+
+Details:
+- Stale-share-address bug: backend cleared `addr` but left it in state.json;
+  fixed backend (`fileRecvStop`/`fileRecvStatus` clear `st.Addr`) AND made the
+  UI visibility a truthiness check.
+- heroMeta gated on the file receiver made a running listener show "READY".
+
+Evidence:
+`backend/cmd/omarchy-tailcat/file.go`, `ui/Manager.qml`; OCR + harness runs
+on 2026-09-01.
+
+Action:
+Prefer `!!`/`Boolean()` for `visible:` checks on fields that can be omitted;
+keep formatting helpers (fmtBytes etc.) in the same QML component that calls
+`root.<fn>()`.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Tailcat CLI is far more machine-readable than expected
 
 Type: lesson

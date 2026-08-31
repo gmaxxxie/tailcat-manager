@@ -57,6 +57,8 @@ Item {
     executing = true
     busy = true
     current = queue.shift()
+    // Clear any stale error so a fresh operation starts clean.
+    root.lastError = ""
     proc.command = [root.backendCmd].concat(current.args)
     proc.running = true
   }

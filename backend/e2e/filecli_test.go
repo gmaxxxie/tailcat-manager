@@ -157,6 +157,42 @@ func TestFileCLIReject(t *testing.T) {
 }
 
 // waitForPending polls recv-status until a pending offer appears.
+func TestFileRecvStopClearsAddr(t *testing.T) {
+	// Regression: after `file recv-stop`, `file recv-status` must not report the
+	// old share address (the UI would otherwise keep showing a stale
+	// "Share: …" row + Copy button for a stopped receiver).
+	bin := buildManagerBin(t)
+	mapURL := startLocalDERPMap(t)
+	_, env := managerEnv(t)
+	dir := t.TempDir()
+
+	out, err := runBin(t, env, bin, "file", "recv-start", "--dir="+dir, "--derpmap-url="+mapURL)
+	if err != nil {
+		t.Fatalf("recv-start: %v\n%s", err, out)
+	}
+	var start struct {
+		Addr string `json:"addr"`
+	}
+	if err := json.Unmarshal([]byte(out), &start); err != nil || start.Addr == "" {
+		t.Fatalf("recv-start output: %q", out)
+	}
+
+	if out, err := runBin(t, env, bin, "file", "recv-stop"); err != nil {
+		t.Fatalf("recv-stop: %v\n%s", err, out)
+	}
+
+	statusOut, err := runBin(t, env, bin, "file", "recv-status")
+	if err != nil {
+		t.Fatalf("recv-status: %v\n%s", err, statusOut)
+	}
+	if strings.Contains(statusOut, "\"addr\"") || strings.Contains(statusOut, start.Addr) {
+		t.Fatalf("recv-status still reports a stale addr after stop: %s", statusOut)
+	}
+	if !strings.Contains(statusOut, "\"running\":false") {
+		t.Fatalf("recv-status should report running:false: %s", statusOut)
+	}
+}
+
 func waitForPending(t *testing.T, env []string, bin string) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)

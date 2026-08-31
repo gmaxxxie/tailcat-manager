@@ -416,6 +416,7 @@ func fileRecvStop(ctx context.Context) int {
 	_ = atomicfile.Remove(filepath.Join(recvDir(), "addr"))
 	st := loadRecvState()
 	st.Running = false
+	st.Addr = ""
 	st.Pending = nil
 	st.Done = nil
 	writeRecvState(&st)
@@ -427,6 +428,7 @@ func fileRecvStatus(ctx context.Context) int {
 	st := loadRecvState()
 	st.Running = recvRunning()
 	if !st.Running {
+		st.Addr = "" // never show a stale share address for a stopped receiver
 		st.Pending = nil
 		st.Done = nil
 	}

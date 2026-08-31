@@ -147,6 +147,15 @@ Item {
     return Math.round(us) + " µs"
   }
 
+  // fmtBytes must live here too: the bridge's copy is not visible to root.*.
+  function fmtBytes(n) {
+    var v = Number(n || 0)
+    if (v >= 1 << 30) return (v / (1 << 30)).toFixed(1) + " GB"
+    if (v >= 1 << 20) return (v / (1 << 20)).toFixed(1) + " MB"
+    if (v >= 1 << 10) return (v / (1 << 10)).toFixed(1) + " KB"
+    return v + " B"
+  }
+
   function pingSelf(untilDirect) {
     if (!root.bridge.listener || !root.bridge.listener.addr) return
     busyOp = "ping"
@@ -317,7 +326,6 @@ Item {
     if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) root.bridge.fileRecvStop()
     else root.bridge.fileRecvStart(recvDir, "")
   }
-  function useDeviceForSend() { var d = selectedDevice(); if (d) sendTarget = d.target }
   function doSendFile() {
     var t = sendTarget.trim()
     var p = sendPath.trim()
@@ -344,11 +352,9 @@ Item {
 
   function heroMeta() {
     if (!root.bridge.available) return "TAILCAT NOT INSTALLED"
-    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) {
-      var st = root.bridge.listener || {}
-      if (st.running === true) return "RUNNING · " + (st.keyInUse || "ephemeral")
-      return "READY"
-    }
+    var st = root.bridge.listener || {}
+    if (st.running === true) return "RUNNING · " + (st.keyInUse || "ephemeral")
+    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true) return "RECEIVING"
     return "READY"
   }
 
@@ -356,6 +362,9 @@ Item {
     if (!root.bridge.available) return "Install `tailcat` (e.g. paru -S tailcat) and restart"
     var st = root.bridge.listener || {}
     if (st.running === true && st.addr) return shortTarget(st.addr)
+    if (root.bridge.fileRecvState && root.bridge.fileRecvState.running === true && root.bridge.fileRecvState.addr) {
+      return "Receiving: " + shortTarget(root.bridge.fileRecvState.addr)
+    }
     return "No listener running"
   }
 
@@ -598,6 +607,33 @@ Item {
             elide: Text.ElideRight
           }
 
+          // Listener identity: which key the next Start/Restart uses. Picking a
+          // saved server identity gives a stable address; Ephemeral makes a new
+          // one each session.
+          Row {
+            width: parent.width
+            spacing: Style.space(4)
+            Text {
+              text: "Key:"
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+            Repeater {
+              model: root.identityChips()
+              Button {
+                text: modelData.name
+                selected: modelData.selected
+                fontFamily: root.fontFamily
+                fontSize: Style.font.caption
+                horizontalPadding: Style.spacing.sm
+                foreground: root.foreground
+                accent: root.accent
+                onClicked: root.listenerKey = modelData.key
+              }
+            }
+          }
+
           // ---- Receive ----
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
           PanelSectionHeader { text: "RECEIVE FILE"; foreground: root.foreground }
@@ -613,7 +649,7 @@ Item {
             TextField {
               id: homeRecvDirField
               Layout.fillWidth: true
-              placeholderText: "Recv dir"
+              placeholderText: "Recv dir (default ~/Downloads)"
               foreground: root.foreground
               accent: root.accent
               text: root.recvDir
@@ -629,7 +665,7 @@ Item {
             }
           }
           Row {
-            visible: root.bridge.fileRecvState && root.bridge.fileRecvState.addr !== ""
+            visible: root.bridge.fileRecvState && !!root.bridge.fileRecvState.addr
             width: parent.width
             spacing: Style.space(6)
             Text {
@@ -645,7 +681,7 @@ Item {
           Text {
             width: parent.width
             visible: root.bridge.fileRecvPending.length === 0
-            text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Waiting for incoming…" : "No incoming — start receiving to accept files from others"
+            text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Waiting for incoming… → " + (root.recvDir.trim() || "~/Downloads") : "No incoming — start receiving to accept files from others"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -729,7 +765,9 @@ Item {
           // ---- Send ----
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
           PanelSectionHeader { text: "SEND FILE"; foreground: root.foreground }
-          Row {
+          // All saved devices as wrapping chips — click to set the send target.
+          Flow {
+            width: parent.width
             spacing: Style.space(4)
             Repeater {
               model: root.homeDeviceChips()
@@ -745,20 +783,15 @@ Item {
               }
             }
           }
-          Row {
+          TextField {
+            id: homeTargetField
             width: parent.width
-            spacing: Style.space(4)
-            TextField {
-              id: homeTargetField
-              width: parent.width - 96
-              placeholderText: "Target tc… (or pick a device above)"
-              foreground: root.foreground
-              accent: root.accent
-              text: root.sendTarget
-              onTextChanged: root.sendTarget = text
-              Keys.onEscapePressed: root.grabNavFocus()
-            }
-            Button { text: "Use device"; width: 90; onClicked: root.useDeviceForSend() }
+            placeholderText: "Target tc… (or pick a device above)"
+            foreground: root.foreground
+            accent: root.accent
+            text: root.sendTarget
+            onTextChanged: root.sendTarget = text
+            Keys.onEscapePressed: root.grabNavFocus()
           }
           // Left = controls, right = status summary.
           RowLayout {
@@ -1156,8 +1189,7 @@ Item {
   }
   function homeDeviceChips() {
     var out = []
-    var max = Math.min(4, root.bridge.devices.length)
-    for (var i = 0; i < max; i++) {
+    for (var i = 0; i < root.bridge.devices.length; i++) {
       var d = root.bridge.devices[i]
       out.push({ name: d.name, target: d.target })
     }
