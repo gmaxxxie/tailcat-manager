@@ -573,22 +573,15 @@ Item {
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
           PanelSectionHeader { text: "LISTENER"; foreground: root.foreground }
           // Left = controls, right = status badge.
-          Item {
+          RowLayout {
             width: parent.width
-            implicitHeight: Math.max(ctrlRow.implicitHeight, statusBadge.implicitHeight)
-            Row {
-              id: ctrlRow
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(6)
-              Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
-              Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
-              Button { text: "Ping"; enabled: root.listenerState.running === true; onClicked: root.pingSelf(true) }
-            }
+            spacing: Style.space(6)
+            Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
+            Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
+            Button { text: "Ping"; enabled: root.listenerState.running === true; onClicked: root.pingSelf(true) }
+            Item { Layout.fillWidth: true; height: 1 }
             Text {
-              id: statusBadge
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
+              Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
               text: root.listenerState.running === true ? "● Running" : "○ Stopped"
               color: root.listenerState.running === true ? root.accent : root.dim
               font.family: root.fontFamily
@@ -609,33 +602,25 @@ Item {
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
           PanelSectionHeader { text: "RECEIVE FILE"; foreground: root.foreground }
           // Left = controls, right = status badge.
-          Item {
+          RowLayout {
             width: parent.width
-            implicitHeight: Math.max(recCtrl.implicitHeight, recBadge.implicitHeight)
-            Row {
-              id: recCtrl
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(6)
-              Button {
-                width: 132
-                text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
-                onClicked: root.toggleRecv()
-              }
-              TextField {
-                id: homeRecvDirField
-                width: 200
-                placeholderText: "Recv dir"
-                foreground: root.foreground
-                accent: root.accent
-                text: root.recvDir
-                onTextChanged: root.recvDir = text
-              }
+            spacing: Style.space(6)
+            Button {
+              width: 132
+              text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
+              onClicked: root.toggleRecv()
+            }
+            TextField {
+              id: homeRecvDirField
+              Layout.fillWidth: true
+              placeholderText: "Recv dir"
+              foreground: root.foreground
+              accent: root.accent
+              text: root.recvDir
+              onTextChanged: root.recvDir = text
             }
             Text {
-              id: recBadge
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
+              Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
               visible: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true
               text: "● Receiving"
               color: root.accent
@@ -774,32 +759,24 @@ Item {
             Button { text: "Use device"; width: 90; onClicked: root.useDeviceForSend() }
           }
           // Left = controls, right = status summary.
-          Item {
+          RowLayout {
             width: parent.width
-            implicitHeight: Math.max(sendCtrl.implicitHeight, sendStat.implicitHeight)
-            Row {
-              id: sendCtrl
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(4)
-              TextField {
-                id: homePathField
-                width: 240
-                placeholderText: "File path"
-                foreground: root.foreground
-                accent: root.accent
-                text: root.sendPath
-                onTextChanged: root.sendPath = text
-                onAccepted: root.doSendFile()
-                Keys.onEscapePressed: root.grabNavFocus()
-              }
-              Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
-              Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
+            spacing: Style.space(4)
+            TextField {
+              id: homePathField
+              Layout.fillWidth: true
+              placeholderText: "File path"
+              foreground: root.foreground
+              accent: root.accent
+              text: root.sendPath
+              onTextChanged: root.sendPath = text
+              onAccepted: root.doSendFile()
+              Keys.onEscapePressed: root.grabNavFocus()
             }
+            Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
+            Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
             Text {
-              id: sendStat
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
+              Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
               visible: root.bridge.sendActive || root.bridge.sendResult !== "" || root.connectResult !== null
               text: root.bridge.sendActive ? (root.bridge.sendFile + "  " + root.fmtBytes(root.bridge.sendSent) + "/" + root.fmtBytes(root.bridge.sendTotal)) : (root.bridge.sendResult !== "" ? root.bridge.sendResult : root.resultLine())
               color: root.accent
