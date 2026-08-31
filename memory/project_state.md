@@ -2,7 +2,15 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; UI restructured (Home command panel + Manage); two-machine next
+### Status: V0.1 + V0.2 done & live; UI restructured (Home command panel + Manage); widget-failure bug fixed
+
+- **Widget-loading regression (2026-08-31 late) — FIXED:** the cleanup commit
+  (82686b9) left an orphaned debug `Timer {` header, swallowing all subsequent
+  root handlers → QML parse error (Expected token `}'` at EOF) → Manager
+  unavailable → the whole plugin widget vanished from the bar (reported as
+  "icons gone"). Fixed by removing the orphan block; verified via harness
+  (zero errors), shell restart (no plugin-failed line), pixel/OCR checks
+  (bar glyph + hero icon render, popup shows Home/LISTENER/RECEIVE/SEND).
 
 - **UI structure (2026-08-31)** — Manager.qml reworked from 7 tabs to a
   **Home ⇄ Manage** model:
