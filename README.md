@@ -8,6 +8,21 @@ over Tailscale's WireGuard data plane + NAT traversal.
 > **Goal:** make Tailcat easy to use *without* remembering or typing CLI
 > commands. Not a VPN, not a subnet router, not a control plane.
 
+## Install (one line) — other machines / Omarchy
+
+```sh
+# 1. tailcat (the thing being managed) — required, on PATH
+paru -S tailcat        # or: tailcat-bin
+
+# 2. Tailcat Manager (backend + Omarchy bar widget, no Go needed)
+curl -sL https://raw.githubusercontent.com/gmaxxxie/tailcat-manager/master/quick-install.sh | bash
+```
+
+The script downloads the prebuilt backend from the GitHub release for your
+architecture (fallback: builds from source with Go 1.27+), installs it to
+`~/.local/bin/omarchy-tailcat`, and on Omarchy systems installs + enables the
+bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
+
 ## Status
 
 **Phase 0 (technical spike) — done.** Upstream Tailcat analyzed; see:
