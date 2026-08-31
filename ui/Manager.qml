@@ -544,6 +544,7 @@ Item {
           spacing: Style.space(6)
 
           // ---- Listener ----
+          PanelSeparator { width: parent.width; foreground: root.foreground }
           PanelSectionHeader { text: "LISTENER"; foreground: root.foreground }
           Row {
             spacing: Style.space(6)
@@ -580,6 +581,7 @@ Item {
           }
 
           // ---- Receive ----
+          PanelSeparator { width: parent.width; foreground: root.foreground }
           PanelSectionHeader { text: "RECEIVE FILE"; foreground: root.foreground }
           Row {
             spacing: Style.space(6)
@@ -695,6 +697,7 @@ Item {
           }
 
           // ---- Send ----
+          PanelSeparator { width: parent.width; foreground: root.foreground }
           PanelSectionHeader { text: "SEND FILE"; foreground: root.foreground }
           Row {
             spacing: Style.space(4)
@@ -866,6 +869,7 @@ Item {
                 }
               }
             }
+            PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.06 }
             Row {
               visible: root.bridge.devices.length > 0
               spacing: Style.space(6)
@@ -900,6 +904,7 @@ Item {
               font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
             }
+            PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.06 }
             Row {
               spacing: Style.space(6)
               TextField {
@@ -964,6 +969,7 @@ Item {
                 }
               }
             }
+            PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.06 }
             Row {
               spacing: Style.space(6)
               TextField {
@@ -1031,6 +1037,7 @@ Item {
                 }
               }
             }
+            PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.06 }
             Row {
               spacing: Style.space(6)
               TextField {
