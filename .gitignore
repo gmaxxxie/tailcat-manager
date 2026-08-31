@@ -1,0 +1,20 @@
+# Dependencies / reference
+# Upstream Tailcat is cloned here for analysis only (see README). Not part of
+# our module. Re-clone/pin when needed.
+/upstream-tailcat/
+
+# Go
+/backend/bin/
+*.test
+*.out
+
+# Build artifacts
+/dist/
+/packaging/omarchy/*.pkg.tar.zst
+
+# Editor / OS
+.DS_Store
+*.swp
+
+# Local secrets never committed
+*.private.json
