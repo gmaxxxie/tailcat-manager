@@ -45,7 +45,7 @@ esac
 
 # 1) Backend binary: prefer the release asset, else build from source.
 bin="$work/omarchy-tailcat"
-if [ -n "$asset" ] && curl -fsSL -o "$bin" \
+if [ -n "$asset" ] && curl -fsSL --retry 3 --retry-all-errors -o "$bin" \
     "https://github.com/${REPO}/releases/download/${VERSION}/${asset}" 2>/dev/null; then
   say "Downloading prebuilt backend (${asset})"
 else
