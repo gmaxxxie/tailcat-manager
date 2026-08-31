@@ -572,18 +572,28 @@ Item {
           // ---- Listener ----
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
           PanelSectionHeader { text: "LISTENER"; foreground: root.foreground }
-          Row {
-            spacing: Style.space(6)
+          // Left = controls, right = status badge.
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(ctrlRow.implicitHeight, statusBadge.implicitHeight)
+            Row {
+              id: ctrlRow
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(6)
+              Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
+              Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
+              Button { text: "Ping"; enabled: root.listenerState.running === true; onClicked: root.pingSelf(true) }
+            }
             Text {
-              width: 120
+              id: statusBadge
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
               text: root.listenerState.running === true ? "● Running" : "○ Stopped"
               color: root.listenerState.running === true ? root.accent : root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
             }
-            Button { text: root.listenerState.running === true ? "Stop" : "Start"; onClicked: root.startOrStop() }
-            Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
-            Button { text: "Ping"; enabled: root.listenerState.running === true; onClicked: root.pingSelf(true) }
           }
           Text {
             width: parent.width
@@ -598,21 +608,39 @@ Item {
           // ---- Receive ----
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
           PanelSectionHeader { text: "RECEIVE FILE"; foreground: root.foreground }
-          Row {
-            spacing: Style.space(6)
-            Button {
-              width: 132
-              text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
-              onClicked: root.toggleRecv()
+          // Left = controls, right = status badge.
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(recCtrl.implicitHeight, recBadge.implicitHeight)
+            Row {
+              id: recCtrl
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(6)
+              Button {
+                width: 132
+                text: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true ? "Stop receiving" : "Start receiving"
+                onClicked: root.toggleRecv()
+              }
+              TextField {
+                id: homeRecvDirField
+                width: 200
+                placeholderText: "Recv dir"
+                foreground: root.foreground
+                accent: root.accent
+                text: root.recvDir
+                onTextChanged: root.recvDir = text
+              }
             }
-            TextField {
-              id: homeRecvDirField
-              width: parent.width - 138
-              placeholderText: "Recv dir (default ~/Downloads)"
-              foreground: root.foreground
-              accent: root.accent
-              text: root.recvDir
-              onTextChanged: root.recvDir = text
+            Text {
+              id: recBadge
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              visible: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true
+              text: "● Receiving"
+              color: root.accent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
             }
           }
           Row {
@@ -745,21 +773,40 @@ Item {
             }
             Button { text: "Use device"; width: 90; onClicked: root.useDeviceForSend() }
           }
-          Row {
-            spacing: Style.space(4)
-            TextField {
-              id: homePathField
-              width: parent.width - 150
-              placeholderText: "File path"
-              foreground: root.foreground
-              accent: root.accent
-              text: root.sendPath
-              onTextChanged: root.sendPath = text
-              onAccepted: root.doSendFile()
-              Keys.onEscapePressed: root.grabNavFocus()
+          // Left = controls, right = status summary.
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(sendCtrl.implicitHeight, sendStat.implicitHeight)
+            Row {
+              id: sendCtrl
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(4)
+              TextField {
+                id: homePathField
+                width: 240
+                placeholderText: "File path"
+                foreground: root.foreground
+                accent: root.accent
+                text: root.sendPath
+                onTextChanged: root.sendPath = text
+                onAccepted: root.doSendFile()
+                Keys.onEscapePressed: root.grabNavFocus()
+              }
+              Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
+              Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
             }
-            Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
-            Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
+            Text {
+              id: sendStat
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              visible: root.bridge.sendActive || root.bridge.sendResult !== "" || root.connectResult !== null
+              text: root.bridge.sendActive ? (root.bridge.sendFile + "  " + root.fmtBytes(root.bridge.sendSent) + "/" + root.fmtBytes(root.bridge.sendTotal)) : (root.bridge.sendResult !== "" ? root.bridge.sendResult : root.resultLine())
+              color: root.accent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+            }
           }
           Rectangle {
             visible: root.bridge.sendActive
@@ -773,15 +820,6 @@ Item {
               radius: 2.5
               color: root.accent
             }
-          }
-          Text {
-            width: parent.width
-            visible: root.bridge.sendActive || root.bridge.sendResult !== "" || root.connectResult !== null
-            text: root.bridge.sendActive ? (root.bridge.sendFile + "  ·  " + root.fmtBytes(root.bridge.sendSent) + " / " + root.fmtBytes(root.bridge.sendTotal)) : (root.bridge.sendResult !== "" ? root.bridge.sendResult : root.resultLine())
-            color: root.accent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            elide: Text.ElideRight
           }
 
           Text {
