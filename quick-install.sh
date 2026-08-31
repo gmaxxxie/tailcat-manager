@@ -55,8 +55,8 @@ else
   git clone -q --depth 1 --branch "$BRANCH" "https://github.com/${REPO}" "$SOURCE_DIR"
   ( cd "$SOURCE_DIR/backend" && go build -o "$bin" ./cmd/omarchy-tailcat )
 fi
-[ -x "$bin" ] || die "backend binary failed to download/build"
 chmod +x "$bin"
+[ -s "$bin" ] && [ -x "$bin" ] || die "backend binary failed to download/build"
 "$bin" version >/dev/null 2>&1 || die "downloaded backend does not run on this machine"
 
 # 2) Plugin sources (manifest.json + QML) from the branch tarball.
