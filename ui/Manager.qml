@@ -630,6 +630,7 @@ Item {
           }
           Row {
             visible: root.bridge.fileRecvState && root.bridge.fileRecvState.addr !== ""
+            width: parent.width
             spacing: Style.space(6)
             Text {
               width: parent.width - 90
@@ -745,6 +746,7 @@ Item {
             }
           }
           Row {
+            width: parent.width
             spacing: Style.space(4)
             TextField {
               id: homeTargetField
@@ -914,6 +916,7 @@ Item {
             }
             Row {
               visible: root.renaming
+              width: parent.width
               spacing: Style.space(6)
               TextField {
                 id: renameField
@@ -939,6 +942,7 @@ Item {
             }
             PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.18 }
             Row {
+              width: parent.width
               spacing: Style.space(6)
               TextField {
                 id: saveDeviceField
@@ -1005,6 +1009,7 @@ Item {
             }
             PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.18 }
             Row {
+              width: parent.width
               spacing: Style.space(6)
               TextField {
                 id: newIdentityField
@@ -1074,10 +1079,12 @@ Item {
             }
             PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.18 }
             Row {
+              id: addServiceRow
+              width: parent.width
               spacing: Style.space(6)
               TextField {
                 id: addServiceField
-                width: parent.width - 260
+                width: addServiceRow.width - 260
                 placeholderText: "Name (optional)"
                 foreground: root.foreground
                 accent: root.accent
