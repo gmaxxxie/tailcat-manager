@@ -148,4 +148,18 @@ Item {
       if (onSuccess) onSuccess(data)
     })
   }
+
+  // ---- web console daemon ----
+  property var webState: ({})
+  function refreshWeb() {
+    run(["web", "status"], function(data) { if (data) webState = data })
+  }
+  function webStart(port, onSuccess) {
+    var args = ["web", "start"]
+    if (String(port || "").trim() !== "") args.push("--port=" + String(port).trim())
+    run(args, function(data) { if (data) webState = data; refreshWeb(); if (onSuccess) onSuccess(data) })
+  }
+  function webStop(onSuccess) {
+    run(["web", "stop"], function(data) { if (data) webState = data; refreshWeb(); if (onSuccess) onSuccess(data) })
+  }
 }

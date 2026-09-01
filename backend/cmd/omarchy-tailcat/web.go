@@ -10,15 +10,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+
+	"omarchy-tailcat/config"
 )
 
 // addrRe matches the address line tailcat recv prints.
@@ -60,8 +65,32 @@ func tailcatBin() string {
 }
 
 func webCmd(args []string) int {
-	listen := "127.0.0.1:8080"
-	recvDir := filepath.Join(os.Getenv("HOME"), "Downloads")
+	if len(args) > 0 {
+		switch args[0] {
+		case "start":
+			return webDaemonStart(args[1:])
+		case "stop":
+			return webDaemonStop()
+		case "status":
+			out(webDaemonStatus())
+			return 0
+		case "restart":
+			webDaemonStop()
+			return webDaemonStart(args[1:])
+		}
+	}
+	// Front-run server (also the daemon child process).
+	listen, recvDir, err := parseWebArgs(args)
+	if err != nil {
+		return errOut(err)
+	}
+	return webServe(listen, recvDir)
+}
+
+// parseWebArgs extracts --listen/--port and --recv-dir flags.
+func parseWebArgs(args []string) (listen, recvDir string, err error) {
+	listen = "127.0.0.1:8080"
+	recvDir = filepath.Join(os.Getenv("HOME"), "Downloads")
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--listen" && i+1 < len(args):
@@ -69,15 +98,25 @@ func webCmd(args []string) int {
 			i++
 		case strings.HasPrefix(args[i], "--listen="):
 			listen = strings.TrimPrefix(args[i], "--listen=")
+		case args[i] == "--port" && i+1 < len(args):
+			listen = "127.0.0.1:" + args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--port="):
+			listen = "127.0.0.1:" + strings.TrimPrefix(args[i], "--port=")
 		case args[i] == "--recv-dir" && i+1 < len(args):
 			recvDir = args[i+1]
 			i++
 		case strings.HasPrefix(args[i], "--recv-dir="):
 			recvDir = strings.TrimPrefix(args[i], "--recv-dir=")
 		default:
-			return fail("invalid_input", "unknown web arg: "+args[i], "args: --listen=<addr:port> --recv-dir=<dir>")
+			return "", "", fmt.Errorf("unknown web arg: %s (args: --listen=<addr:port> --port=<n> --recv-dir=<dir>)", args[i])
 		}
 	}
+	return listen, recvDir, nil
+}
+
+// webServe runs the HTTP file-transfer console in the foreground.
+func webServe(listen, recvDir string) int {
 	if err := os.MkdirAll(recvDir, 0o755); err != nil {
 		return errOut(err)
 	}
@@ -99,6 +138,139 @@ func webCmd(args []string) int {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return errOut(err)
 	}
+	return 0
+}
+
+// ---- web daemon management (web start/stop/status) ------------------------
+
+type webState struct {
+	PID       int    `json:"pid"`
+	Port      int    `json:"port"`
+	RecvDir   string `json:"recvDir"`
+	StartedAt string `json:"startedAt,omitempty"`
+}
+
+func webStatePath() string { return filepath.Join(config.Dir(), "web.json") }
+
+func loadWebState() (*webState, error) {
+	b, err := os.ReadFile(webStatePath())
+	if err != nil {
+		return nil, err
+	}
+	var st webState
+	if err := json.Unmarshal(b, &st); err != nil {
+		return nil, err
+	}
+	return &st, nil
+}
+
+func saveWebState(st webState) error {
+	b, _ := json.MarshalIndent(st, "", "  ")
+	if err := os.MkdirAll(config.Dir(), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(webStatePath(), b, 0o600)
+}
+
+func pidAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	return syscall.Kill(pid, 0) == nil
+}
+
+func portListening(port int) bool {
+	c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 300*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
+}
+
+func webDaemonStatus() map[string]any {
+	st, _ := loadWebState()
+	running := st != nil && pidAlive(st.PID)
+	port := 8080
+	recvDir := filepath.Join(os.Getenv("HOME"), "Downloads")
+	if st != nil {
+		port = st.Port
+		recvDir = st.RecvDir
+	}
+	return map[string]any{
+		"running": running,
+		"url":     fmt.Sprintf("http://127.0.0.1:%d", port),
+		"port":    port,
+		"recvDir": recvDir,
+	}
+}
+
+func webDaemonStart(args []string) int {
+	listen, recvDir, err := parseWebArgs(args)
+	if err != nil {
+		return errOut(err)
+	}
+	_, portStr, err := net.SplitHostPort(listen)
+	if err != nil {
+		return errOut(fmt.Errorf("bad listen address %q: %w", listen, err))
+	}
+	port, _ := strconv.Atoi(portStr)
+
+	if st, _ := loadWebState(); st != nil && pidAlive(st.PID) {
+		out(webDaemonStatus())
+		return 0
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return errOut(err)
+	}
+	logf, err := os.OpenFile(filepath.Join(config.Dir(), "web.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return errOut(err)
+	}
+	defer logf.Close()
+
+	cmd := exec.Command(exe, "web", "--listen="+listen, "--recv-dir="+recvDir)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.Stdout = logf
+	cmd.Stderr = logf
+	if err := cmd.Start(); err != nil {
+		return errOut(err)
+	}
+	if err := saveWebState(webState{PID: cmd.Process.Pid, Port: port, RecvDir: recvDir, StartedAt: time.Now().Format(time.RFC3339)}); err != nil {
+		return errOut(err)
+	}
+
+	deadline := time.Now().Add(4 * time.Second)
+	for time.Now().Before(deadline) {
+		if pidAlive(cmd.Process.Pid) && portListening(port) {
+			out(webDaemonStatus())
+			return 0
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	_ = syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
+	_ = os.Remove(webStatePath())
+	return fail("error", "web server failed to start", "see "+filepath.Join(config.Dir(), "web.log"))
+}
+
+func webDaemonStop() int {
+	st, _ := loadWebState()
+	if st != nil && pidAlive(st.PID) {
+		_ = syscall.Kill(st.PID, syscall.SIGTERM)
+		for i := 0; i < 10; i++ {
+			if !pidAlive(st.PID) {
+				break
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+		if pidAlive(st.PID) {
+			_ = syscall.Kill(st.PID, syscall.SIGKILL)
+		}
+	}
+	_ = os.Remove(webStatePath())
+	out(webDaemonStatus())
 	return 0
 }
 

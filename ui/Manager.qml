@@ -53,6 +53,7 @@ Item {
       if (root.bridge) {
         root.bridge.refresh()
         root.bridge.refreshDevices()
+        root.bridge.refreshWeb()
       }
     })
   }
@@ -108,6 +109,19 @@ Item {
     var s = String(target || "")
     if (s.indexOf("tc") === 0 && s.length > 12) return "peer-" + s.substr(s.length - 4)
     return (s.split(".")[0] || "peer")
+  }
+
+  // ---- web console ----
+  function toggleWeb() {
+    if (root.bridge.webState && root.bridge.webState.running) {
+      root.bridge.webStop()
+    } else {
+      root.bridge.webStart(webPortField.text)
+    }
+  }
+  function openWeb() {
+    var url = root.bridge.webState && root.bridge.webState.url
+    if (url) Quickshell.execDetached(["xdg-open", url])
   }
 
   Keys.onPressed: function(event) {
@@ -281,6 +295,54 @@ Item {
     }
 
     PanelSeparator { Layout.fillWidth: true; foreground: root.foreground; strength: 0.32 }
+
+    // ---- Web file console (daemon-managed) ----
+    Text {
+      Layout.fillWidth: true
+      text: "WEB FILE CONSOLE"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      Text {
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+        text: (root.bridge.webState && root.bridge.webState.running) ? "● " + root.bridge.webState.url : "○ stopped"
+        color: (root.bridge.webState && root.bridge.webState.running) ? root.accent : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+      Button {
+        text: "Open"
+        enabled: !!(root.bridge.webState && root.bridge.webState.running)
+        onClicked: root.openWeb()
+      }
+      Button {
+        text: (root.bridge.webState && root.bridge.webState.running === true) ? "Stop" : "Start"
+        onClicked: root.toggleWeb()
+      }
+    }
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      TextField {
+        id: webPortField
+        Layout.fillWidth: true
+        placeholderText: "Port (default 8080)"
+        foreground: root.foreground
+        accent: root.accent
+        validator: IntValidator { bottom: 1; top: 65535 }
+      }
+      Text {
+        text: "file transfer in the browser"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+    }
 
     // Point to an AI agent / terminal for the rest.
     Text {

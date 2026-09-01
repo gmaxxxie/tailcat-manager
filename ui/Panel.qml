@@ -26,8 +26,8 @@ Panel {
     id: tcBridge
   }
 
-  readonly property bool available: tcBridge.available
-  readonly property bool running: tcBridge.listener && tcBridge.listener.running === true
+  readonly property bool available: !!tcBridge.available
+  readonly property bool running: !!(tcBridge.listener && tcBridge.listener.running === true)
 
   readonly property string barText: {
     if (!available) return "󰞀 ×"
