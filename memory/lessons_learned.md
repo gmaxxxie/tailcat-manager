@@ -1,5 +1,38 @@
 # Lessons Learned
 
+### 2026-09-01 — In Quickshell QML, a parent cannot read a child id via root.<childId> (it is undefined); use the bare id
+
+Type: lesson
+
+Summary:
+`root.someChildId` returns **undefined** for a child object id — e.g. `Timer { id:
+noteTimer }` inside the root Item cannot be reached as `root.noteTimer`; you must
+reference the bare id (`noteTimer`) in any function/closure of that component.
+Symptom: "TypeError: Cannot call method 'restart' of undefined" at runtime when
+a button handler fired, while the same component loaded cleanly in the harness.
+
+Details:
+- Verified with a minimal QML: `root.noteTimer` → undefined, `noteTimer` →
+  QQmlTimer. Only properties declared on the component (`property var x`) and
+  required properties are reachable via `root.x`; child ids are not.
+- Hit in the Tailcat popup: `root.noteTimer.restart()` inside the
+  restart/ping feedback timer crashed the callback, so the action note stuck
+  on "Restarting…" and the (serialized) bridge queue could not clear.
+- The same root."" prefix is fine for component properties (foreground, bridge,
+  listenerState, etc.), so the mistake was easy to miss.
+
+Evidence:
+`/home/max/tailcat-manager/ui/Manager.qml` (restartServer/pingSelf), fixed in
+commit 0fc7b2f.
+
+Action:
+Reference child object ids by bare id inside a component's JS; only use
+`root.x` for declared properties. When a QML runtime error mentions "of
+undefined" for a method call, check whether the receiver is a child id accessed
+via `root.`.
+
+Status: active
+
 ### 2026-09-01 — Copy-to-clipboard in a Quickshell popup: never Qt.createQmlObject a Process; use execDetached(["wl-copy","--",text])
 
 Type: lesson
