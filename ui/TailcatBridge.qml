@@ -10,8 +10,8 @@ import Quickshell.Io
 //
 // The widget only needs listener status + start/stop/restart + self-ping.
 // Everything else (devices, identities, services, diagnostics, file
-// transfer) is driven by pi directly through the `omarchy-tailcat` / `tailcat`
-// CLIs, so this bridge stays minimal.
+// transfer) is driven by an AI agent directly through the
+// `omarchy-tailcat` / `tailcat` CLIs, so this bridge stays minimal.
 Item {
   id: root
 

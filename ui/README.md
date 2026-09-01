@@ -4,8 +4,8 @@
 - `Panel.qml` — bar widget entry point (status glyph + opens the manager popup)
 - `Manager.qml` — the popup: deliberately **slim** — listener status +
   start/stop/restart + copy-address + self-ping. Everything else is handled by
-  pi via the `omarchy-tailcat` / `tailcat` CLIs (see the pi `tailcat` skill);
-  file transfer runs in the terminal (`tailcat recv` / `tailcat cp`).
+  an AI agent via the `omarchy-tailcat` / `tailcat` CLIs (see the `tailcat`
+  skill); file transfer runs in the terminal (`tailcat recv` / `tailcat cp`).
 - `TailcatBridge.qml` — QML ↔ backend bridge: runs `omarchy-tailcat` with
   structured argv, serialized FIFO queue, JSON parse
 - `bin/omarchy-tailcat` — the Go backend (built; not committed)

@@ -9,8 +9,8 @@ import qs.Ui
 // it shows listener status and does quick start/stop/restart, plus
 // copy-address and self-ping. Everything else — saved devices,
 // identities, shared services, diagnostics, and file transfer — is
-// handled by pi via the `omarchy-tailcat` / `tailcat` CLIs (see the pi
-// `tailcat` skill). File transfer runs in the terminal, not here.
+// handled by an AI agent via the `omarchy-tailcat` / `tailcat` CLIs
+// (see the `tailcat` skill). File transfer runs in the terminal, not here.
 //
 // Keyboard: Esc close · s start/stop · p ping · c copy address.
 Item {
@@ -171,11 +171,11 @@ Item {
 
     PanelSeparator { Layout.fillWidth: true; foreground: root.foreground; strength: 0.32 }
 
-    // Point to pi / terminal for the rest.
+    // Point to an AI agent / terminal for the rest.
     Text {
       Layout.fillWidth: true
-      text: "设备 / 身份 / 传文件交给 pi —— 在终端里说“帮我管理 tailcat”。"
-          + "（收文件：tailcat recv <目录>；发文件：tailcat cp <文件> <地址>:）"
+      text: "Devices, identities, and file transfers are handled by an AI agent in the terminal — say “manage tailcat”."
+          + " (Receive: tailcat recv <dir>; Send: tailcat cp <file> <addr>:)"
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
