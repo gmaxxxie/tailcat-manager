@@ -4,6 +4,18 @@
 
 ### Status: V0.1 + V0.2 done & live; **v0.2.0 released**; next: two-machine acceptance + V0.3 text
 
+> **IMPORTANT — second worktree / direction (2026-09-01):** the user's current
+> direction lives in a SEPARATE repo **`/home/max/tailcat-manager`** (not this
+> one): a **slim popup** branch (master `ee799b3`, ahead of origin) that shows
+> only listener status + start/stop/restart + copy-address + self-ping, and
+> defers devices/identities/file transfer to **an AI agent in the terminal**
+> (`tailcat` skill + `omarchy-tailcat`/`tailcat` CLIs). This repo
+> (`/home/max/项目/tailcat-manager`) holds the earlier full 7-tab Home/Manage
+> V0.1+V0.2 build. When the user says "the popup" they mean the slim one.
+> Follow the latest user direction (slim + AI-agent-managed) over the V0.2
+> feature-plan recorded below; keep both repos in sync for backend/installer
+> only where they share code.
+
 - **Release v0.2.0 (2026-09-01) — DONE, published & verified:**
   - `quick-install.sh` bumped `VERSION=v0.2.0`; README got a V0.2 file-transfer
     section + refreshed "Next up".
