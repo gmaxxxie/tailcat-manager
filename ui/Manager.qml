@@ -834,85 +834,99 @@ Item {
             Button { text: "Restart"; enabled: root.listenerState.running === true; onClicked: root.restartServer() }
           }
 
-          // ---- Who can connect ----
-          PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
-          PanelSectionHeader { text: "WHO CAN CONNECT"; foreground: root.foreground }
+          // ---- Who can connect (only while connections are on) ----
           Text {
+            visible: root.listenerState.running !== true
             width: parent.width
-            text: root.secureLinkStatus()
-            color: (root.allowNone || (root.usingFixedKey() && root.allowUnsafe())) ? root.urgent : root.accent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-            wrapMode: Text.WordWrap
-          }
-          Row {
-            width: parent.width
-            spacing: Style.space(6)
-            Button {
-              text: "⚡ Secure link — fixed address + only my devices"
-              onClicked: root.setupSecureLink()
-            }
-            Button {
-              text: "Copy address"
-              enabled: root.listenerState.running === true
-              onClicked: root.copyListenerAddr()
-            }
-          }
-          Text {
-            width: parent.width
-            text: "One click: makes this machine's address permanent and allows only your own device (and any key you add below). To let another machine in, paste its device key below."
+            text: "Connections are off — nobody can reach this machine. Turn on Allow connections to share your address and choose who can connect."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
           }
-          Repeater {
-            model: root.allowList
-            Rectangle {
+          Column {
+            visible: root.listenerState.running === true
+            width: parent.width
+            spacing: Style.space(4)
+            PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
+            PanelSectionHeader { text: "WHO CAN CONNECT"; foreground: root.foreground }
+            Text {
               width: parent.width
-              height: allowRow.implicitHeight + Style.space(6)
-              radius: Style.cornerRadius
-              color: Util.alpha(root.foreground, 0.05)
-              Row {
-                id: allowRow
-                anchors.fill: parent
-                anchors.margins: Style.space(3)
-                spacing: Style.space(6)
-                Text {
-                  width: parent.width - 130
-                  text: String(modelData).length > 28 ? String(modelData).substr(0, 10) + "…" + String(modelData).substr(-8) : modelData
-                  color: root.foreground
-                  font.family: "monospace"
-                  font.pixelSize: Style.font.caption
-                  elide: Text.ElideMiddle
-                }
-                Button { text: "Copy"; onClicked: root.copyText(modelData) }
-                Button { text: "Remove"; onClicked: root.removeAllowKey(index) }
+              text: root.secureLinkStatus()
+              color: (root.allowNone || (root.usingFixedKey() && root.allowUnsafe())) ? root.urgent : root.accent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              wrapMode: Text.WordWrap
+            }
+            Row {
+              width: parent.width
+              spacing: Style.space(6)
+              Button {
+                text: "⚡ Secure link — fixed address + only my devices"
+                onClicked: root.setupSecureLink()
+              }
+              Button {
+                text: "Copy address"
+                enabled: root.listenerState.running === true
+                onClicked: root.copyListenerAddr()
               }
             }
-          }
-          RowLayout {
-            width: parent.width
-            spacing: Style.space(6)
-            TextField {
-              id: allowKeyField
-              Layout.fillWidth: true
-              placeholderText: "Paste another device's key (nodekey:…) to allow it"
-              foreground: root.foreground
-              accent: root.accent
-              text: root.allowKeyInput
-              onTextChanged: root.allowKeyInput = text
-              onAccepted: root.addAllowKey()
+            Text {
+              width: parent.width
+              text: "One click: makes this machine's address permanent and allows only your own device (and any key you add below). To let another machine in, paste its device key below."
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              wrapMode: Text.WordWrap
             }
-            Button { text: "Allow device"; onClicked: root.addAllowKey() }
-            Button { text: "Clear"; enabled: root.allowList.length > 0; onClicked: root.clearAllowList() }
-          }
-          Toggle {
-            label: "Block everyone until I allow a device"
-            description: "Safest while you add device keys"
-            checked: root.allowNone
-            width: parent.width
-            onClicked: { root.allowNone = !root.allowNone; if (root.allowNone) root.allowList = [] }
+            Repeater {
+              model: root.allowList
+              Rectangle {
+                width: parent.width
+                height: allowRow.implicitHeight + Style.space(6)
+                radius: Style.cornerRadius
+                color: Util.alpha(root.foreground, 0.05)
+                Row {
+                  id: allowRow
+                  anchors.fill: parent
+                  anchors.margins: Style.space(3)
+                  spacing: Style.space(6)
+                  Text {
+                    width: parent.width - 130
+                    text: String(modelData).length > 28 ? String(modelData).substr(0, 10) + "…" + String(modelData).substr(-8) : modelData
+                    color: root.foreground
+                    font.family: "monospace"
+                    font.pixelSize: Style.font.caption
+                    elide: Text.ElideMiddle
+                  }
+                  Button { text: "Copy"; onClicked: root.copyText(modelData) }
+                  Button { text: "Remove"; onClicked: root.removeAllowKey(index) }
+                }
+              }
+            }
+            RowLayout {
+              width: parent.width
+              spacing: Style.space(6)
+              TextField {
+                id: allowKeyField
+                Layout.fillWidth: true
+                placeholderText: "Paste another device's key (nodekey:…) to allow it"
+                foreground: root.foreground
+                accent: root.accent
+                text: root.allowKeyInput
+                onTextChanged: root.allowKeyInput = text
+                onAccepted: root.addAllowKey()
+              }
+              Button { text: "Allow device"; onClicked: root.addAllowKey() }
+              Button { text: "Clear"; enabled: root.allowList.length > 0; onClicked: root.clearAllowList() }
+            }
+            Toggle {
+              label: "Block everyone until I allow a device"
+              description: "Safest while you add device keys"
+              checked: root.allowNone
+              width: parent.width
+              onClicked: { root.allowNone = !root.allowNone; if (root.allowNone) root.allowList = [] }
+            }
           }
 
           // ---- Receive files ----
