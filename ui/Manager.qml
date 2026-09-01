@@ -82,7 +82,7 @@ Item {
     root.actionNote = "Restarting…"
     root.bridge.restartServer(function() {
       root.actionNote = "Listener restarted"
-      root.noteTimer.restart()
+      noteTimer.restart()
     })
   }
   function copyAddr() { if (listenerState.addr) root.copyText(listenerState.addr) }
@@ -96,7 +96,7 @@ Item {
         root.actionNote = ""
         root.bridge.lastError = (res && res.message) || "Ping failed"
       }
-      root.noteTimer.restart()
+      noteTimer.restart()
     })
   }
   function fmtMs(ns) { return (Number(ns || 0) / 1e6).toFixed(0) + "ms" }
