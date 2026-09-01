@@ -50,7 +50,10 @@ Item {
   onOpenedChanged: {
     if (opened) Qt.callLater(function() {
       root.grabNavFocus()
-      if (root.bridge) root.bridge.refresh()
+      if (root.bridge) {
+        root.bridge.refresh()
+        root.bridge.refreshDevices()
+      }
     })
   }
 
@@ -80,8 +83,8 @@ Item {
     Quickshell.execDetached(["wl-copy", "--", String(t)])
   }
 
-  function sshTo() {
-    var target = sshTarget.text.trim()
+  function sshToTarget(target) {
+    target = String(target || "").trim()
     if (!target) return
     // Open a terminal running `tailcat ssh <target>`. The peer must serve
     // `no-auth-ssh`; the tailcat tunnel itself is the identity/auth. The
@@ -92,6 +95,7 @@ Item {
       "tc-ssh", target])
     root.bridge.lastError = ""
   }
+  function sshTo() { sshToTarget(sshTarget.text) }
 
   Keys.onPressed: function(event) {
     var key = event.key
@@ -185,6 +189,43 @@ Item {
     }
 
     PanelSeparator { Layout.fillWidth: true; foreground: root.foreground; strength: 0.32 }
+
+    // ---- Saved devices: one-click SSH ----
+    Text {
+      Layout.fillWidth: true
+      text: "SAVED DEVICES"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    Repeater {
+      model: root.bridge.devices
+      RowLayout {
+        width: parent.width
+        spacing: Style.space(6)
+        Text {
+          Layout.fillWidth: true
+          elide: Text.ElideRight
+          text: modelData.name + "  ·  " + root.shortTarget(modelData.target)
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+        }
+        Button {
+          text: "SSH"
+          onClicked: root.sshToTarget(modelData.target)
+        }
+      }
+    }
+    Text {
+      Layout.fillWidth: true
+      visible: !root.bridge.devices || root.bridge.devices.length === 0
+      text: "No saved devices. Add one in a terminal: omarchy-tailcat devices add <name> <tc…>"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      wrapMode: Text.WordWrap
+    }
 
     // ---- One-click SSH to a peer ----
     Text {

@@ -24,6 +24,7 @@ Item {
   property bool minOK: false
   property string versionError: ""
   property var listener: ({})          // ListenerStatus JSON
+  property var devices: []             // saved devices (from devices list)
   property string lastError: ""        // human message of last failure
   property string lastDetail: ""       // redacted detail (Details disclosure)
   property bool busy: false
@@ -125,6 +126,12 @@ Item {
       if (onSuccess) onSuccess(data || { ok: false })
     }, function(data, message, detail) {
       if (onSuccess) onSuccess({ ok: false, message: message, detail: detail })
+    })
+  }
+
+  function refreshDevices() {
+    run(["devices", "list"], function(data) {
+      devices = Array.isArray(data) ? data : []
     })
   }
 }
