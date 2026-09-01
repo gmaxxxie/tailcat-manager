@@ -818,6 +818,7 @@ Item {
             label: "Allow connections from other devices"
             description: root.listenerState.running === true ? "This machine's address is shareable now" : "Turn on to share this machine's address"
             checked: root.listenerState.running === true
+            width: parent.width
             onClicked: root.startOrStop()
           }
           Row {
@@ -904,6 +905,7 @@ Item {
             label: "Block everyone until I allow a device"
             description: "Safest while you add device keys"
             checked: root.allowNone
+            width: parent.width
             onClicked: { root.allowNone = !root.allowNone; if (root.allowNone) root.allowList = [] }
           }
 
@@ -917,8 +919,13 @@ Item {
               label: "Receive files from other devices"
               description: "Shares a receive address; you accept each file"
               checked: root.bridge.fileRecvState && root.bridge.fileRecvState.running === true
+              Layout.fillWidth: true
               onClicked: root.toggleRecv()
             }
+          }
+          RowLayout {
+            width: parent.width
+            spacing: Style.space(6)
             TextField {
               Layout.fillWidth: true
               placeholderText: "Recv dir (default ~/Downloads)"
@@ -1217,6 +1224,7 @@ Item {
               label: "SSH access"
               description: "Let devices SSH in without a password (tunnel = identity)"
               checked: root.hasService("no-auth-ssh")
+              Layout.fillWidth: true
               onClicked: root.toggleServiceKind("no-auth-ssh", "SSH access")
             }
           }
@@ -1229,6 +1237,7 @@ Item {
               label: "Share a folder (SFTP)"
               description: "scp/sftp clients can access a directory"
               checked: root.hasService("files")
+              Layout.fillWidth: true
               onClicked: root.setFilesShare(!root.hasService("files"))
             }
           }
@@ -1281,6 +1290,7 @@ Item {
               label: "Exit node (route through this machine's network)"
               description: "Other devices can reach IPs on this machine's LAN"
               checked: root.hasService("exit-node")
+              Layout.fillWidth: true
               onClicked: root.toggleServiceKind("exit-node", "Exit node")
             }
           }
@@ -1445,6 +1455,7 @@ Item {
               label: "Device key (for allowing this machine on others)"
               description: "Creates a client identity; its nodekey goes in the other machine's allow list"
               checked: root.newIdentityClient
+              width: parent.width
               onClicked: root.newIdentityClient = !root.newIdentityClient
             }
           }
@@ -1500,6 +1511,7 @@ Item {
               Toggle {
                 label: "Route everything through one device"
                 checked: root.socksFixed
+                Layout.fillWidth: true
                 onClicked: { root.socksFixed = !root.socksFixed; if (!root.socksFixed) root.socksTarget = "" }
               }
               TextField {
