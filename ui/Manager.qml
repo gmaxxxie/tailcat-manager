@@ -167,7 +167,12 @@ Item {
 
   function shortTarget(t) {
     var s = String(t || "")
-    if (s.indexOf("tc") === 0 && s.length > 12) return "tc…" + s.substr(s.length - 4)
+    // Tailcat tokens share a fixed prefix (tco2FwW…) and a fixed DERP tail, so
+    // the first and last characters are identical across addresses. Show a
+    // chunk from the random middle so the short form actually changes per key.
+    if (s.indexOf("tc") === 0 && s.length > 30) {
+      return "tc…" + s.substr(7, 7) + "…" + s.substr(s.length - 4)
+    }
     return s
   }
 
