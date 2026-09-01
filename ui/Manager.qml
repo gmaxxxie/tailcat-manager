@@ -480,7 +480,9 @@ Item {
     if (allowList.indexOf(k) >= 0) { root.bridge.lastError = "That key is already allowed"; return }
     allowList = allowList.concat([k])
     allowKeyInput = ""
-    root.bridge.lastError = ""
+    root.bridge.lastError = root.bridge.listener && root.bridge.listener.running === true
+      ? "Device allowed — restart the listener to apply (or toggle Allow connections off/on)."
+      : "Device allowed — applies when you turn on Allow connections."
   }
   function removeAllowKey(i) { allowList = allowList.filter(function(_, idx) { return idx !== i }) }
   function clearAllowList() { allowList = []; allowNone = false }
