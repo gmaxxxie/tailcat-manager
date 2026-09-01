@@ -86,6 +86,14 @@ Item {
   function sshToTarget(target) {
     target = String(target || "").trim()
     if (!target) return
+    // Auto-save as a device so SSH'd peers are remembered for next time.
+    var known = false
+    for (var i = 0; i < root.bridge.devices.length; i++) {
+      if (root.bridge.devices[i].target === target) { known = true; break }
+    }
+    if (!known && root.bridge && root.bridge.addDevice) {
+      root.bridge.addDevice(root.deviceDefaultName(target), target)
+    }
     // Open a terminal running `tailcat ssh <target>`. The peer must serve
     // `no-auth-ssh`; the tailcat tunnel itself is the identity/auth. The
     // target is passed as an argv position ($1) so nothing is shell-parsed.
@@ -96,6 +104,11 @@ Item {
     root.bridge.lastError = ""
   }
   function sshTo() { sshToTarget(sshTarget.text) }
+  function deviceDefaultName(target) {
+    var s = String(target || "")
+    if (s.indexOf("tc") === 0 && s.length > 12) return "peer-" + s.substr(s.length - 4)
+    return (s.split(".")[0] || "peer")
+  }
 
   Keys.onPressed: function(event) {
     var key = event.key
@@ -214,6 +227,11 @@ Item {
         Button {
           text: "SSH"
           onClicked: root.sshToTarget(modelData.target)
+        }
+        Button {
+          text: "✕"
+          tooltipText: "Forget this device"
+          onClicked: root.bridge.removeDevice(modelData.id)
         }
       }
     }

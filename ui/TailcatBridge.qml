@@ -134,4 +134,18 @@ Item {
       devices = Array.isArray(data) ? data : []
     })
   }
+
+  function addDevice(name, target, onSuccess) {
+    run(["devices", "add", String(name || ""), String(target || "")], function(data) {
+      refreshDevices()
+      if (onSuccess) onSuccess(data)
+    })
+  }
+
+  function removeDevice(id, onSuccess) {
+    run(["devices", "remove", String(id || "")], function(data) {
+      refreshDevices()
+      if (onSuccess) onSuccess(data)
+    })
+  }
 }
