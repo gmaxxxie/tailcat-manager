@@ -36,7 +36,7 @@ Item {
   // defined below; implicitHeight resolves after creation.
   readonly property real pageImplicitHeight: {
     var extra = (root.bridge && root.bridge.lastError !== "" ? errLine.implicitHeight : 0) + Style.space(4)
-    return (body ? body.implicitHeight : 0) + hero.implicitHeight + extra + Style.space(28)
+    return (body ? body.implicitHeight : 0) + extra + Style.space(28)
   }
   implicitHeight: root.pageImplicitHeight
 
@@ -133,9 +133,18 @@ Item {
   }
 
   // ---- Render ----
-  ColumnLayout {
-    id: body
+  // One Flickable wraps the whole page (contentHeight = inner Column
+  // implicitHeight) so tall content scrolls and short content sits naturally.
+  Flickable {
+    id: scroll
     anchors.fill: parent
+    clip: true
+    contentHeight: body.implicitHeight
+    boundsBehavior: Flickable.StopAtBounds
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+    ColumnLayout {
+      id: body
+      width: parent.width
     spacing: Style.space(5)
 
     PanelHero {
@@ -353,6 +362,7 @@ Item {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
+    }
     }
   }
 }
