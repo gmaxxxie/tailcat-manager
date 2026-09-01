@@ -156,7 +156,26 @@
     SHA-256; GUI bridge (HarnessFile) real-DERP transfer intact; live shell
     loads 7 tabs clean (pid journal clean).
 
-### Next actions (current, 2026-09-01)
+### Next actions (current, 2026-09-01 EOD — continue tomorrow)
+1. **Two-machine FILE-TRANSFER acceptance (X12)** — SSH is verified cross-machine;
+   the remaining gate is file transfer both directions + Direct-vs-DERP +
+   reject/cancel, following `docs/two-machine-test.md`. X12 already runs system
+   sshd and accepted `id_ed25519_local`; its `tailcat` is NOT on PATH (couldn't
+   read its nodekey for whitelisting).
+2. **X12 side cleanup** — decide SSH method (system sshd+pubkey vs no-auth-ssh);
+   if X12 should connect back into this box, put tailcat on X12 PATH and read
+   `tailcat printpub`, then add that nodekey to this box's allow list.
+3. **V0.3 text transfer** — `op:"text"` reserved (docs/file-transfer.md §4.5),
+   nothing wired: backend message path + `file send-text/recv-text` CLI + UI.
+4. **Release** — the GitHub release is still v0.3.0 (pre-device-hub). Bump
+   quick-install.sh VERSION + publish when stable; decide License (BSD-3 vs MIT)
+   first.
+5. **Packaging** — packaging/omarchy/PKGBUILD not written yet (dev install.sh
+   only).
+6. **Popup polish** — centering (centerOnBar) + width 640 done; user may ask
+   for further tweaks.
+
+### Next actions (2026-09-01, superseded by the list above)
 1. **Two-machine acceptance** (V0.1 + V0.2 together) — the only remaining gate
    before V0.1+V0.2 is "done for real". Ready to run: `docs/two-machine-test.md`
    checklist, v0.2.0 installer, this box's tailcat restored (available:true).
