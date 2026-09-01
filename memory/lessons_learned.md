@@ -1,5 +1,34 @@
 # Lessons Learned
 
+### 2026-09-01 — Hide config blocks that depend on a master switch; show why
+
+Type: lesson
+
+Summary:
+When a settings section only makes sense while a master toggle is on (e.g.
+WHO CAN CONNECT only matters while Allow connections is on), hide the whole
+block when the switch is off and show a one-line explanation instead — don't
+leave a confusing status like "open to anyone" visible while nothing is open.
+
+Details:
+- This Device: WHO CAN CONNECT is wrapped in `Column { visible:
+  listener.running === true }`; when off, a Text explains "Connections are off —
+  nobody can reach this machine…". RECEIVE FILES stays visible (independent).
+- Pattern: wrap dependent UI in a Column and bind its visible to the switch;
+  give the off-state an explanatory Text, not silence.
+
+Evidence:
+2026-09-01 This-Device clarity pass; verified both on (block shown) and off
+(prompt + hidden) states on the live shell.
+
+Action:
+Use conditional Columns for switch-dependent config; always explain the off
+state in words.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Omarchy `Toggle` elides its label at 240px; stretch to full width
 
 Type: lesson
