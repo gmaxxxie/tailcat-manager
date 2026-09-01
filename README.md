@@ -25,12 +25,27 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
 
 ## Status
 
+**2026-09 — simplified.** The project was split by surface:
+
+- **Top-bar widget = status + start/stop only.** The popup is now a slim panel
+  (listener status, Start/Stop/Restart, copy-address, self-ping). See `ui/`.
+- **Everything else = pi + CLI.** Saved devices, identities, shared services,
+  diagnostics, and **file transfer** are driven by pi via the `omarchy-tailcat`
+  / `tailcat` CLIs. A pi skill (`tailcat`) teaches this; ask pi to "manage
+  tailcat" in a terminal.
+- **Native file-transfer backend removed.** The V0.2 native Go adapter
+  (`native.go`, file daemon, `file` subcommand) and its huge
+  `tailscale.com`/gVisor dependency tree were deleted. File transfer runs in
+  the terminal: `tailcat recv <dir>` (receive) and `tailcat cp <file> <addr>:`
+  (send).
+
+### V0.1 (what remains)
+
 **Phase 0 (technical spike) — done.** Upstream Tailcat analyzed; see:
 
 - `docs/tailcat-analysis.md` — the Phase 0 source analysis (CLI/API/file
   transfer/security/testing).
-- `docs/architecture.md` — recommended architecture, backend interface, and
-  implementation plan.
+- `docs/architecture.md` — architecture and implementation notes.
 - `docs/security.md` — threat model for tokens, keys, config, and file transfer.
 
 **V0.1 backend — implemented and tested** (`backend/`):
@@ -48,8 +63,8 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
 **V0.1 GUI — implemented and live on Omarchy** (`ui/`):
 
 - Quickshell bar-widget plugin `dev.omarchy.tailcat` (`manifest.json`,
-  `Panel.qml`, `Manager.qml`, `TailcatBridge.qml`) with Dashboard / Connect /
-  Saved Devices / Identities / Shared Services / Diagnostics.
+  `Panel.qml`, `Manager.qml`, `TailcatBridge.qml`) — **slim**: bar status
+  glyph + popup with status/start/stop/restart/copy-address/ping.
 - Backend bridge calls `omarchy-tailcat` with structured argv + JSON.
 - Install: `./packaging/omarchy/install.sh` (builds backend, installs the
   plugin, enables it, puts it on the bar).
@@ -58,34 +73,41 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
 Upstream reference copy (pinned for study): `upstream-tailcat/` (a clone of
 `github.com/tailscale/tailcat`, do not edit).
 
-## Integration decision (Phase 0 outcome)
+## Integration decision (revised 2026-09)
 
-Hybrid, behind one `TailcatBackend` interface:
+One `TailcatBackend` interface, one **CLI adapter**:
 
 - **V0.1 — CLI adapter:** wrap the `tailcat` binary with structured argv
   (`TAILCAT_ADDR_FILE`, `--json`, `parse`, `ping`, `genkey`). Fast, low
   coupling, no heavy dependency tree.
-- **V0.2 — native Go library adapter:** file/text transfer with progress,
-  cancel, accept/reject needs streaming the CLI cannot expose; use
-  `github.com/tailscale/tailcat` directly behind the same interface.
+- **V0.2 native library adapter: WITHDRAWN (2026-09).** File/text transfer
+  with progress was the reason for the native adapter, but it is no longer
+  part of the GUI. Transfers run in the terminal (`tailcat recv`/`cp`), where
+  scp-style progress and accept behavior are already fine, so the native
+  dependency was removed entirely.
+- The UI talks only to the interface. If a GUI transfer UI is ever wanted
+  again, re-introduce a native adapter behind the same interface.
 
 ## Structure
 
 ```
-docs/            analysis, architecture, security
-backend/         Go backend (interface, cli/native adapters, config, process)
-ui/              Quickshell/QML plugin (manifest.json, Panel.qml, Manager.qml) — next
-packaging/       Omarchy/Arch packaging — next
-tests/           (unit tests live inside backend/; hermetic e2e in backend/e2e)
+docs/            analysis, architecture, security, file-transfer (terminal)
+backend/         Go backend (interface, cli adapter, config, process)
+ui/              Quickshell/QML plugin (manifest.json, Panel.qml, Manager.qml)
+packaging/       Omarchy/Arch packaging
+memory/          project memory (decisions, lessons, state)
 ```
 
 ## Development
 
-See `docs/architecture.md` §10 for the plan. This project follows the memory
-protocol in `AGENTS.md` (`memory/`).
+See `docs/architecture.md` for the architecture and the backend plan. This
+project follows the memory protocol in `AGENTS.md` (`memory/`).
 
-Next up: Quickshell GUI shell (`ui/`) wired to the backend, then the V0.1
-acceptance walkthrough on two machines, then V0.2 native file transfer.
+Current state: slim widget (status + start/stop) is live; management and file
+transfer happen via pi (`tailcat` skill) and the CLIs. Next up: refresh the
+widget/backend on the second machine and re-run the acceptance walkthrough
+(`docs/two-machine-test.md`), and decide whether to keep `upstream-tailcat/`
+in the repo.
 
 ## License
 

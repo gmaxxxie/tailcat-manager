@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Tailcat Manager",
   "license": "MIT",
-  "description": "Graphical management for Tailcat (point-to-point WireGuard connectivity, no control plane) from the Omarchy bar: listener, connect, saved devices, identities, diagnostics, and shared services.",
+  "description": "Slim Tailcat control from the Omarchy bar: listener status and start/stop/restart, copy-address, self-ping. Devices, identities, diagnostics, and file transfer are managed via the tailcat CLI / pi skill.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Tailcat",
-    "description": "Start/stop the Tailcat listener, connect to devices, manage saved devices and identities, and configure shared services.",
+    "description": "Start/stop the Tailcat listener and view its status; copy the address to share. Full management (devices, identities, file transfer) happens in the terminal via the tailcat CLI / pi skill.",
     "category": "Network",
     "allowMultiple": false,
     "defaultSection": "right",

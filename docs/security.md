@@ -52,22 +52,27 @@
 - Versioned schema (`"version": 1`); migrations run explicitly and also
   atomically (write new file, then rename).
 
-## 5. File transfer (V0.2) — receiver-controlled safety
+## 5. File transfer (terminal; native receiver removed 2026-09)
 
-- Receiver **chooses/confirms** the destination path (explicit save dialog), and
-  sees name + size before accepting.
-- Sanitization: use `filepath.Base` on the incoming filename; reject names
-  containing `/`, `\`, NUL, or `.`/`..`; truncate overlong names.
-- Collision handling: never overwrite silently. Always resolve via UI
-  (overwrite / rename / skip). Prefer `O_CREATE|O_EXCL` first attempt; explicit
-  overwrite opens `O_TRUNC` after confirmation.
-- Symlink safety: open the destination with `O_NOFOLLOW` where supported, and
-  reject if the resolved final path is a symlink; never follow links created by
-  the sender.
-- Destination must be a real, user-selected path — never derived from the
-  sender's filename alone.
-- Optional integrity: send expected SHA-256 in the header; verify on receive;
-  report mismatch as transfer failure (keep partial file only if user opts in).
+Transfers now run in the terminal via `tailcat recv <dir>` (write-only drop
+box) and `tailcat cp <file> <addr>:` (scp-style). The GUI native receiver
+(with accept/reject dialogs and O_EXCL collision handling) was removed, so the
+per-transfer hardening below applied to the deleted code and is archived here
+in case a GUI transfer is ever re-added behind the `TailcatBackend` interface:
+
+- Receiver **chooses/confirms** the destination path, and sees name + size
+  before accepting.
+- Sanitization: `filepath.Base` on the incoming filename; reject `/`, `\`, NUL,
+  `.`/`..`; truncate overlong names.
+- Collision: never overwrite silently (prefer `O_CREATE|O_EXCL`; explicit
+  overwrite after confirmation).
+- Symlink safety: `O_NOFOLLOW`, reject resolved-path symlinks.
+- Optional integrity: SHA-256 in header, verified on receive.
+
+Current transfer surface notes:
+- `tailcat recv` is write-only and scoped to the chosen directory.
+- The tc… address is a capability — share privately (this section's §6 applies).
+- The manager never writes into `~/.config/tailcat/` during transfers.
 
 ## 6. Tokens in logs and diagnostics
 

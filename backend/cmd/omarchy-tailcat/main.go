@@ -114,8 +114,6 @@ func run(args []string) int {
 		return identities(ctx, store, args[1:])
 	case "serve":
 		return serve(ctx, store, args[1:])
-	case "file":
-		return fileCmd(ctx, store, args[1:])
 	case "ping":
 		return ping(ctx, store, args[1:])
 	case "devices":

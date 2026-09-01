@@ -1,13 +1,16 @@
 # ui/ — Tailcat Manager Omarchy plugin (Quickshell/QML)
 
 - `manifest.json` — plugin manifest (kind: bar-widget)
-- `Panel.qml` — bar widget entry point (status + opens the manager popup)
-- `Manager.qml` — the manager UI (Dashboard / Connect / Devices / Identities /
-  Services / Diagnostics), keyboard + touch friendly
+- `Panel.qml` — bar widget entry point (status glyph + opens the manager popup)
+- `Manager.qml` — the popup: deliberately **slim** — listener status +
+  start/stop/restart + copy-address + self-ping. Everything else is handled by
+  pi via the `omarchy-tailcat` / `tailcat` CLIs (see the pi `tailcat` skill);
+  file transfer runs in the terminal (`tailcat recv` / `tailcat cp`).
 - `TailcatBridge.qml` — QML ↔ backend bridge: runs `omarchy-tailcat` with
   structured argv, serialized FIFO queue, JSON parse
 - `bin/omarchy-tailcat` — the Go backend (built; not committed)
-- `Harness.qml` — dev-only standalone validation window (not shipped)
+- `Harness.qml` / `HarnessPanel.qml` — dev-only standalone validation (not
+  shipped)
 
 ## Local QML validation (no full shell restart)
 
@@ -39,3 +42,5 @@ quickshell -p "$HARNESS/Harness.qml"
   (`bridge: bridge` ⇒ undefined); name ids differently (`tcBridge`).
 - `bar` has no `accent` property — use `Color.accent`.
 - `anchors.fill` is not allowed on direct children of Row/Column positioners.
+- Row children must never use `Layout.*` or `width: parent.width - N` (creates
+  a polish() loop); size rows with explicit widths.

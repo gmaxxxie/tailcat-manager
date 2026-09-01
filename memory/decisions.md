@@ -1,5 +1,48 @@
 # Decisions
 
+### 2026-09-01 — Simplify: slim widget (status+start/stop), management via pi skill, transfers in terminal
+
+Type: decision
+
+Summary:
+The GUI was over-built. Split the project by surface: the top-bar widget only
+shows listener status and does start/stop/restart + copy-address + self-ping;
+all management (devices, identities, services, diagnostics, file transfer) moved
+to pi via a `tailcat` skill that drives the `omarchy-tailcat` CLI; file transfer
+runs in the terminal (`tailcat recv`/`tailcat cp`). The V0.2 native Go adapter
+(`native.go`, file daemon, `file` subcommand, `cmd/nativedemo`, native e2e tests)
+and the whole `tailscale.com`/gVisor dep tree were deleted — the backend binary
+went from ~20MB to ~5MB and the build is fast.
+
+Details:
+- Rationale: a bar widget is the wrong surface for complex ops; the native
+  library existed only to give a GUI transfer progress/accept, which the
+  terminal already provides. pi is the natural surface for the rest.
+- Widget (`ui/Manager.qml`): 1186 → ~190 lines. `TailcatBridge.qml` trimmed to
+  status/serve/ping only. Removed `ui/HarnessManage.qml`, `ui/HarnessFile.qml`.
+- Skill: `~/.pi/agent/skills/tailcat/SKILL.md` — CLI reference, security rules
+  (tokens = capabilities), workflows (start/stop, share address, ping/connect,
+  devices, identities, transfer, diagnostics), troubleshooting.
+- Backend: `Backend` interface unchanged (it never included transfer methods);
+  only the `file` dispatch was removed. All unit tests pass; `go mod tidy`
+  dropped the tailscale deps.
+- Docs: README, `docs/architecture.md` (§0 note), `docs/file-transfer.md`
+  (rewritten as terminal guide), `docs/two-machine-test.md` (revised),
+  `docs/security.md` (§5 archived).
+
+Evidence:
+The `tailcat cp`/`recv` limitations (§11 analysis) only matter for a GUI;
+user confirmed file transfer via terminal and a slim popup.
+
+Action:
+Keep the widget minimal going forward; put new capabilities in the skill/CLI,
+not the widget. If a GUI transfer is ever wanted again, re-add a native adapter
+behind the existing `TailcatBackend` interface.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Hybrid backend: CLI adapter (V0.1) → native Go library (V0.2)
 
 Type: decision

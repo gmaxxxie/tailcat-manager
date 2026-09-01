@@ -1,135 +1,60 @@
 # Project State
 
-## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
+## Tailcat Manager for Omarchy (`/home/max/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; UI restructured (Home command panel + Manage); widget-failure bug fixed
+### Status: SIMPLIFIED (2026-09-01) — widget = status+start/stop; management = pi skill; transfers = terminal
 
-- **Widget-loading regression (2026-08-31 late) — FIXED:** the cleanup commit
-  (82686b9) left an orphaned debug `Timer {` header, swallowing all subsequent
-  root handlers → QML parse error (Expected token `}'` at EOF) → Manager
-  unavailable → the whole plugin widget vanished from the bar (reported as
-  "icons gone"). Fixed by removing the orphan block; verified via harness
-  (zero errors), shell restart (no plugin-failed line), pixel/OCR checks
-  (bar glyph + hero icon render, popup shows Home/LISTENER/RECEIVE/SEND).
+The project was deliberately de-complexified by splitting by surface:
 
-- **UI structure (2026-08-31)** — Manager.qml reworked from 7 tabs to a
-  **Home ⇄ Manage** model:
-  - Home: command panel with the three core ops on one screen — LISTENER
-    (status/start·stop·restart/ping), RECEIVE FILE (start·stop, share address+
-    copy, incoming Accept/Reject + progress, done line), SEND FILE (device
-    chips + target/path + progress + cancel), plus recent-result line and a
-    shortcut cheat-sheet.
-  - Manage: Devices / Identities / Services / Diagnostics sub-pages, each with
-    a usage-guide line; top nav Home|Manage + a **?** expandable help block
-    (both flow walkthroughs + shortcuts).
-  - Tabs 7→2; keyboard remapped (s/r/j/k/a/d/t/f/Enter/m/?/Esc; Manage 1-4).
-  - Verified: harness clean, live shell clean, OCR shows Home renders.
+- **Top-bar widget** = listener status + Start/Stop/Restart + copy-address +
+  self-ping only. `ui/Manager.qml` went from **1186 → ~190 lines**;
+  `TailcatBridge.qml` trimmed to status/serve/ping. Devices/identities/
+  services/diagnostics/file-transfer pages were removed from the GUI.
+- **pi skill `tailcat`** (`~/.pi/agent/skills/tailcat/SKILL.md`) drives the
+  `omarchy-tailcat` CLI for everything else: devices, identities, shared
+  services, diagnostics, connect/ping. User asks pi "帮我管理 tailcat".
+- **File transfer in the terminal**: `tailcat recv <dir>` (receive) and
+  `tailcat cp <file> <addr>:` (send). The **V0.2 native Go adapter was
+  removed entirely** — `native.go`, `cmd/nativedemo`, the `file` subcommand +
+  recv daemon, native e2e tests, and the `tailscale.com`/gVisor dep tree.
+  Backend binary ~20MB → **~5MB**; build is fast; all unit tests pass.
+- Installed binary updated at `~/.local/bin/omarchy-tailcat`.
 
 ### Next actions
+1. **Restore `tailcat` binary** (currently MISSING — the dev build in
+   `/tmp/tailcat-build/` was wiped). Either `paru -S tailcat`/`tailcat-bin` or
+   rebuild from `github.com/tailscale/tailcat` (pinned commit `4d50a34f`,
+   2026-08-30) into `~/.local/bin/tailcat`. Until then the widget shows
+   "NOT INSTALLED" (handled gracefully).
+2. **Install the slim plugin to the live shell** (copy `ui/*.qml` to
+   `~/.config/omarchy/plugins/dev.omarchy.tailcat/`, then
+   `omarchy restart shell`) — pending user confirmation.
+3. **Two-machine acceptance** (revised `docs/two-machine-test.md`): listener
+   + terminal file transfer both ways, Direct vs DERP.
+4. Optional: drop the archived `upstream-tailcat/` clone / decide license.
 
-- **V0.2 file transfer — COMPLETE on this machine:**
-  - `omarchy-tailcat file send` (one-shot, JSON-lines progress + result) and
-    `file recv` daemon + `recv-start/stop/status/respond` (file-based IPC
-    state + decisions, mirrors the serve listener pattern).
-  - GUI Files tab (7 tabs): receive service (start/stop, addr+copy, incoming
-    offers with Accept/Reject + progress bars, completed list) and send
-    (target + file path, progress bar, cancel) via TailcatBridge streaming
-    (`file send` Process with waitForEnd:false collector).
-  - KEY FIX: embedded-region tokens break real-DERP routing (ParseConnBlob
-    restores RegionID=1); StartReceiver now emits a short RegionID token.
-    Sender retries the meow handshake (startup race).
-  - Verified: full backend suite green (protocol + local-DERP e2e + CLI file
-    flows); real-DERP CLI ping 152ms; real-DERP 400KB transfer intact with
-    SHA-256; GUI bridge (HarnessFile) real-DERP transfer intact; live shell
-    loads 7 tabs clean (pid journal clean).
+### Historical (pre-simplification)
+- V0.1 backend + GUI were implemented and live; V0.2 native file transfer was
+  implemented on this machine with real-DERP SHA-256 verification. All of that
+  V0.2 native code is now deleted; the design/lessons live in git history +
+  `docs/file-transfer.md` (rewritten as the terminal guide) and
+  `docs/architecture.md` §0.
+- Old UI lessons (layout rules, shell reload, token pitfalls) remain in
+  `memory/lessons_learned.md` and still apply.
 
-### Next actions
-1. **Two-machine acceptance** (V0.1 + V0.2 together) — needs the user's 2nd
-   machine: install tailcat + plugin on both, share listener addr / receiver
-   addr, transfer a file both ways, test Direct-vs-DERP, reject/cancel.
-2. V0.3 text transfer (same port/protocol, `op:"text"` message; Add a Send
-   Text UI row + incoming text notification).
-
-- **V0.1** backend + GUI (Quickshell bar widget) live on this machine; layout
-  + Start fixed (stale-reload issue). See earlier sections.
-- **V0.2 native file transfer — foundation DONE:**
-  - `backend/tailcat/native.go`: framing protocol (JSON-line header + raw
-    body; file/accept/reject/error/done/cancel/text) over TCP; `SendFileStream`
-    / `ReceiveFileStream` with progress, accept/reject, SHA-256 verify,
-    safe-name (`filepath.Base`), O_EXCL collision refusal, partial cleanup;
-    `StartReceiver` (native tailcat.Server on TransferPort 42421, DERP map or
-    embedded region) and `DialToken`/`SendFileToToken` (native Client).
-  - `backend/cmd/nativedemo` (recv/send test+prod-shape binary).
-  - `docs/file-transfer.md` (protocol + architecture + security).
-  - Tests (offline): protocol edge cases over TCP loopback + full
-    end-to-end through real WireGuard data plane (local DERP,
-    separate processes) — all pass.
-  - KEY lesson: two tailcat magicsock instances must run in SEPARATE
-    processes (same-process breaks the meow handshake).
-  - Deps: `github.com/tailscale/tailcat` (+ tailscale.com/gvisor) added to
-    backend module; builds are slower now.
-
-### Next actions
-1. V0.2 GUI + backend CLI: `omarchy-tailcat file send/recv` subcommands;
-   Manager.qml Send File / Incoming (accept/reject) + progress UI.
-2. Two-machine acceptance (V0.1 + V0.2 together) — needs the user's 2nd machine.
-3. V0.3 text transfer (reuse the same port/protocol).
-
-- **Phase 0 (technical spike) — DONE.** Upstream Tailcat
-  (`github.com/tailscale/tailcat`) cloned to `upstream-tailcat/` (pinned
-  commit `4d50a34f`, 2026-08-30, `go 1.27.0`) and analyzed from source.
-- **Docs:** `docs/tailcat-analysis.md`, `docs/architecture.md`, `docs/security.md`.
-- **V0.1 backend — DONE (backend/):**
-  - `omarchy-tailcat` Go binary, JSON subcommands: version/status/validate/
-    parse/identities/serve/ping/devices/diagnostics.
-  - `TailcatBackend` interface (`tailcat/backend.go`) + CLI adapter
-    (`tailcat/cli.go`); listener is a detached `tailcat serve` process with
-    persisted state (`listener.json`/`addr`), so serve status/stop work across
-    backend invocations.
-  - `config/` atomic 0600 versioned config; `domain/` device registry;
-    `process/` supervised child; `validate/` shape checks; `atomicfile/`.
-  - Tests: unit (fake tailcat in `testdata/fake-tailcat.sh`) + hermetic e2e
-    (`backend/e2e/`) vs REAL tailcat binary with localhost DERP
-    (`TS_DEBUG_TAILCAT_LOCAL_DERP=1`, `--derpmap-url=none`) — offline.
-- **V0.1 GUI — DONE and LIVE on this machine (ui/):**
-  - Quickshell plugin `dev.omarchy.tailcat` (bar-widget), installed & enabled
-    at `~/.config/omarchy/plugins/dev.omarchy.tailcat/`, placed on the bar
-    (right section). Popup opens with zero errors; OCR-verified rendering
-    (Dashboard/Connect/Devices/Identities/Services/Diagnostics tabs, Start/
-    Restart/Ping self, listener status).
-  - Files: `manifest.json`, `Panel.qml` (bar widget), `Manager.qml` (popup),
-    `TailcatBridge.qml` (structured-argv JSON bridge), `Harness.qml`
-    (dev-only standalone validation).
-  - Backend binary bundled at `ui/bin/omarchy-tailcat`; install script
-    `packaging/omarchy/install.sh`; packaging README.
-- **Go toolchain: mise go@1.27.0.** Real tailcat binary at
-  `/tmp/tailcat-build/tailcat`, symlinked to `~/.local/bin/tailcat` (dev
-  convenience; on the shell PATH).
-- **tailcat NOT installed via pacman** (Arch AUR: `tailcat`/`tailcat-bin`); the
-  widget detects presence and shows install help.
-
-### Key technical facts (verified from source)
+### Key technical facts (verified from source, still true)
 - Tailcat server address = `tc` + base64url(CBOR) token; default DERP map
   `https://tailcat.dev/derpmap.json`; short token carries region ID only.
 - No-arg `tailcat` = one-shot stdout pipe that EXITS after one connection;
-  persistent listener requires `tailcat serve <ports|services>`.
-- CLI machine hooks: `TAILCAT_ADDR_FILE`, `--json`, `parse` (JSON),
-  `ping` line, `genkey --list`. Errors always exit 1 (no taxonomy).
-- `tailcat cp`/`ssh` wrap system `scp`/`ssh`; no GUI-friendly progress/cancel.
-- File/text transfer with progress needs the NATIVE Go library (V0.2), using a
-  thin framing protocol over a TCP stream (web-demo model).
+  persistent listener requires `tailcat serve <ports|services>` — the manager
+  runs it as a detached, state-persisted process (`serve start/stop/restart`).
+- CLI machine hooks: `TAILCAT_ADDR_FILE`, `--json`, `parse` (JSON), `ping`
+  line, `genkey --list`. Errors always exit 1 (no taxonomy).
+- Embedded (full-address) tokens break DERP routing for region != 1; use short
+  tokens. Native endpoints must run in separate processes.
 - Keys live in `~/.config/tailcat/keys/` (0600). Manager config lives in
   `~/.config/omarchy-tailcat/` (0700/0600, atomic, versioned).
 
 ### Open questions
 - License choice (BSD-3-Clause vs MIT) — deferred to first release.
-- Exact Quickshell window vs popup-panel layout for Manager.
-- **LISTENER button row investigation (2026-08-31):** user asked "where's the
-  Start button". Root cause: six unbounded Rows with `width: parent.width - N`
-  children caused endless QML polish() loops that could collapse/misplace
-  sibling rows. Fixed by giving each Row an explicit width. Also learned the
-  reliable UI verification path: the harness window and popup were being
-  covered by the terminal (grim screenshots showed terminal echo, not the
-  popup) — verified via right-edge crop of the popup (popup hangs over the
-  bar; its right half is unobstructed) and by `journalctl grep polish`
-  (4620 -> 0).
+- Whether to keep `upstream-tailcat/` clone in the repo (currently absent).

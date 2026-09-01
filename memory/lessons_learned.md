@@ -1,5 +1,43 @@
 # Lessons Learned
 
+### 2026-09-01 — A bar widget is the wrong surface for complex ops; offload to pi + CLI
+
+Type: lesson
+
+Summary:
+The Tailcat Manager widget grew to a 1186-line popup + a native Go file-transfer
+backend (huge `tailscale.com`/gVisor dep tree, DERP/magicsock pitfalls) because
+we tried to put EVERY operation in the GUI. The simplification: the widget only
+shows status + start/stop/restart + copy-address + self-ping; devices,
+identities, services, diagnostics, and file transfer moved to a **pi skill**
+that drives the existing `omarchy-tailcat` CLI; transfers run in the terminal
+(`tailcat recv`/`tailcat cp`).
+
+Details:
+- The native library existed only to give a GUI per-transfer progress/accept;
+  a terminal already has scp-style progress and headless `recv` — so deleting
+  the native adapter lost nothing for terminal use and cut the backend from
+  ~20MB to ~5MB, removed the `go 1.27`/tailscale floor, and dropped the whole
+  DERP/magicsock/separate-process class of bugs.
+- A skill is the right mechanism (a Markdown doc pi loads on topic match, zero
+  runtime cost) — NOT a pi extension (custom tool/SDK), which is only needed
+  when pi must run something a shell command can't express.
+- Keep the widget's backend bridge and the skill pointing at the SAME CLI so
+  they never diverge.
+
+Evidence:
+`memory/decisions.md` (2026-09-01 simplify decision); `docs/architecture.md` §0.
+
+Action:
+When a desktop widget starts needing pages/sub-nav/tabs beyond status+quick
+actions, STOP and move the feature to a pi skill + CLI instead. Ask "who is the
+surface for this?" — always-visible widget = 5-second ops; pi/terminal =
+complex or rare ops.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Tailcat CLI is far more machine-readable than expected
 
 Type: lesson

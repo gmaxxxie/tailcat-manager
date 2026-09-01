@@ -1,8 +1,34 @@
 # Omarchy Tailcat Manager — Architecture (Draft v0)
 
-**Date:** 2026-08-31
-**Status:** Proposed, derived from the Phase 0 analysis in `docs/tailcat-analysis.md`.
-**Decision recorded before any GUI work begins.**
+**Date:** 2026-08-31 (draft) · **Revised:** 2026-09-01 — see **§0**.
+**Status:** Superseded in part by the 2026-09 simplification.
+
+---
+
+## 0. 2026-09 simplification (READ THIS FIRST)
+
+The GUI was deliberately slimmed to **status + start/stop** and the complex
+surfaces moved to pi + CLI. What changed vs. the rest of this doc:
+
+- **Widget = status + start/stop/restart + copy-address + self-ping.** The
+  seven-tab/Home⇄Manage popup is gone (`ui/Manager.qml` is now ~200 lines).
+- **Devices / identities / services / diagnostics / file transfer = pi skill**
+  driving the `omarchy-tailcat` CLI (a `tailcat` pi skill exists on the
+  user's machine). The GUI no longer contains these pages.
+- **V0.2 native Go library adapter is WITHDRAWN and REMOVED.** `native.go`,
+  `cmd/nativedemo`, the `file` subcommand/daemon, and the e2e native tests
+  were deleted; the `tailscale.com`/gVisor dependency tree is gone from
+  `go.mod` (the backend is now a small standalone binary).
+- **File transfer runs in the terminal:** `tailcat recv <dir>` (write-only
+  dropbox) and `tailcat cp <file> <addr>:` (scp-style, terminal progress).
+  No GUI progress/accept UI — that was the only reason the native adapter
+  existed, and it is not needed when pi operates the terminal.
+- `backend`/`cli.go` adapter remains the single interface (`Backend` in
+  `backend/tailcat/backend.go`), used by both the widget bridge and the skill.
+
+Sections below describing the V0.2 native adapter, file-transfer GUI, and
+`backend: "cli" | "native"` config are retained as history only; treat them
+as not implemented / archived.
 
 ---
 
