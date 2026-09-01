@@ -36,11 +36,22 @@ Item {
   property bool executing: false
   property var current: null
 
+  // Per-run output captured via onStreamFinished (NOT out.text, which
+  // accumulates across reused Process runs and breaks JSON parsing).
+  property string pendingOut: ""
+  property string pendingErr: ""
+
   Process {
     id: proc
     running: false
-    stdout: StdioCollector { id: out; waitForEnd: true }
-    stderr: StdioCollector { id: err; waitForEnd: true }
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.pendingOut = String(text)
+    }
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.pendingErr = String(text)
+    }
     onExited: function(exitCode) { root.finish(exitCode) }
   }
 
@@ -66,8 +77,10 @@ Item {
   function finish(exitCode) {
     var job = current
     current = null
-    var outText = String(out.text || "")
-    var errText = String(err.text || "")
+    var outText = root.pendingOut
+    var errText = root.pendingErr
+    root.pendingOut = ""
+    root.pendingErr = ""
     var data = null
     if (outText.trim() !== "") {
       try { data = JSON.parse(outText) } catch (e) { data = null }
