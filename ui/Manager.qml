@@ -32,6 +32,16 @@ Item {
   readonly property var listenerState: root.bridge ? (root.bridge.listener || {}) : ({})
   readonly property bool running: listenerState.running === true
 
+  // Brief result of the last action (ping/restart) and inline device rename.
+  property string actionNote: ""
+  property string renamingDeviceId: ""
+
+  Timer {
+    id: noteTimer
+    interval: 3500
+    onTriggered: root.actionNote = ""
+  }
+
   // Height of the visible content so the popup hugs its content. body is
   // defined below; implicitHeight resolves after creation.
   readonly property real pageImplicitHeight: {
@@ -67,14 +77,29 @@ Item {
   }
 
   function startOrStop() { if (root.running) { root.bridge.stopServer() } else { root.bridge.startServer() } }
-  function restartServer() { if (root.running) root.bridge.restartServer() }
+  function restartServer() {
+    if (!root.running) return
+    root.actionNote = "Restarting…"
+    root.bridge.restartServer(function() {
+      root.actionNote = "Listener restarted"
+      root.noteTimer.restart()
+    })
+  }
   function copyAddr() { if (listenerState.addr) root.copyText(listenerState.addr) }
   function pingSelf() {
     if (!listenerState.addr) return
+    root.actionNote = "Pinging…"
     root.bridge.ping(listenerState.addr, true, function(res) {
-      root.bridge.lastError = res.ok ? "" : (res.message || "Ping failed")
+      if (res && res.ok) {
+        root.actionNote = "Pong " + (res.direct ? "direct" : "via DERP") + (res.latency ? "  ·  " + root.fmtMs(res.latency) : "")
+      } else {
+        root.actionNote = ""
+        root.bridge.lastError = (res && res.message) || "Ping failed"
+      }
+      root.noteTimer.restart()
     })
   }
+  function fmtMs(ns) { return (Number(ns || 0) / 1e6).toFixed(0) + "ms" }
 
   function copyText(t) {
     if (!t) return
@@ -198,6 +223,16 @@ Item {
       }
     }
 
+    // Result of the last action (ping/restart) — visible feedback.
+    Text {
+      Layout.fillWidth: true
+      visible: root.actionNote !== ""
+      text: root.actionNote
+      color: root.accent
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+
     // Address + listener details.
     Text {
       Layout.fillWidth: true
@@ -239,13 +274,33 @@ Item {
       RowLayout {
         width: parent.width
         spacing: Style.space(6)
+        TextField {
+          visible: root.renamingDeviceId === modelData.id
+          Layout.fillWidth: true
+          text: modelData.name
+          foreground: root.foreground
+          accent: root.accent
+          onAccepted: {
+            var n = text.trim()
+            if (n !== "") root.bridge.renameDevice(modelData.id, n)
+            root.renamingDeviceId = ""
+          }
+          Keys.onEscapePressed: root.renamingDeviceId = ""
+        }
         Text {
+          visible: root.renamingDeviceId !== modelData.id
           Layout.fillWidth: true
           elide: Text.ElideRight
           text: modelData.name + "  ·  " + root.shortTarget(modelData.target)
           color: root.foreground
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
+        }
+        Button {
+          text: "✎"
+          tooltipText: "Rename device"
+          visible: root.renamingDeviceId !== modelData.id
+          onClicked: root.renamingDeviceId = modelData.id
         }
         Button {
           text: "SSH"

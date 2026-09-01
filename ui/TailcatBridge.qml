@@ -149,6 +149,13 @@ Item {
     })
   }
 
+  function renameDevice(id, name, onSuccess) {
+    run(["devices", "rename", String(id || ""), String(name || "")], function(data) {
+      refreshDevices()
+      if (onSuccess) onSuccess(data)
+    })
+  }
+
   // ---- web console daemon ----
   property var webState: ({})
   function refreshWeb() {
