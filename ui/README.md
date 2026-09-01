@@ -7,6 +7,8 @@
 - `TailcatBridge.qml` — QML ↔ backend bridge: runs `omarchy-tailcat` with
   structured argv, serialized FIFO queue, JSON parse
 - `bin/omarchy-tailcat` — the Go backend (built; not committed)
+- `bin/tc-filepicker` — native file/folder picker via the XDG Desktop Portal
+  (`file`/`dir` arg; prints the chosen path or nothing on cancel)
 - `Harness.qml` — dev-only standalone validation window (not shipped)
 
 ## Local QML validation (no full shell restart)

@@ -81,6 +81,7 @@ if command -v omarchy-shell >/dev/null 2>&1 || command -v omarchy >/dev/null 2>&
   install -m644 "$src/ui/Manager.qml"      "$PLUGIN_DIR/"
   install -m644 "$src/ui/TailcatBridge.qml" "$PLUGIN_DIR/"
   install -m755 "$bin" "$PLUGIN_DIR/bin/omarchy-tailcat"
+  install -m755 "$src/ui/bin/tc-filepicker" "$PLUGIN_DIR/bin/tc-filepicker"
 
   omarchy-shell -q shell rescanPlugins  >/dev/null 2>&1 || true
   sleep 0.5

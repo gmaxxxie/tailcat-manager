@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# tc-filepicker — open the native XDG Desktop Portal file chooser and print the
+# chosen local path to stdout (one line), or nothing if the user cancelled.
+#
+# Usage: tc-filepicker file|dir
+#   file  -> pick a single file to send
+#   dir   -> pick a single folder (e.g. the receive directory)
+#
+# Exit code 0 in all normal cases (path printed, or empty on cancel); exit 1 if
+# the portal could not be reached at all.
+set -u
+
+mode="${1:-file}"
+tok="tc$(date +%s%N)"
+
+if [ "$mode" = "dir" ]; then
+  title="Select a receive folder"
+  opts="{ 'handle_token': <'$tok'>, 'multiple': <false>, 'directory': <true> }"
+else
+  title="Select a file to send"
+  opts="{ 'handle_token': <'$tok'>, 'multiple': <false> }"
+fi
+
+# 1. Ask the portal to open the chooser. It returns the Request object path,
+#    which is where the user's Response signal will arrive.
+req=$(gdbus call --session --dest org.freedesktop.portal.Desktop \
+      --object-path /org/freedesktop/portal/desktop \
+      --method org.freedesktop.portal.FileChooser.OpenFile \
+      "" "$title" "$opts" 2>/dev/null \
+      | sed -n "s/.*'\(\/org\/freedesktop\/portal\/desktop\/request[^']*\)'.*/\1/p")
+
+if [ -z "$req" ]; then
+  echo "Could not reach the desktop portal (org.freedesktop.portal.FileChooser)" >&2
+  exit 1
+fi
+
+# Debug/test hook: echo the request path so a script can simulate the response.
+if [ "${TC_PICKER_ECHO_REQ:-}" = "1" ]; then
+  echo "$req" >&2
+fi
+
+# 2. Listen for the Response signal on that exact request path and capture the
+#    raw dbus-monitor output. The path filter makes this precise (only our
+#    dialog's response matches), so we can stop as soon as it arrives.
+tmp=$(mktemp)
+dbus-monitor --session \
+  "type='signal',interface='org.freedesktop.portal.Request',member='Response',path='$req'" \
+  > "$tmp" 2>/dev/null &
+mpid=$!
+trap 'kill "$mpid" 2>/dev/null; rm -f "$tmp"' EXIT
+
+deadline=$((SECONDS + 600))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  grep -q "member=Response" "$tmp" 2>/dev/null && break
+  sleep 0.1
+done
+out=$(cat "$tmp")
+kill "$mpid" 2>/dev/null
+
+# 3. Parse the response. The code is the first integer on the line right after
+#    the "member=Response" header (the portal emits uint32; gdbus may emit
+#    int32 — accept either). Every `string "file://…"` is a chosen URI.
+code=$(printf '%s' "$out" \
+  | awk '/member=Response/{f=1; next} f && /[0-9]/{print; exit}' \
+  | grep -oE '[0-9]+' | tail -1)
+uri=$(printf '%s' "$out" | grep -oE 'string "file://[^"]*"' | sed 's/string "//; s/"$//' | head -1)
+
+[ "${code:-1}" = "0" ] || exit 0   # cancelled (or closed) -> empty
+[ -n "$uri" ] || exit 0
+
+# 4. file:// URI -> local path (percent-decode with python3).
+python3 - "$uri" <<'PY'
+import sys, urllib.parse
+u = sys.argv[1]
+print(urllib.parse.unquote(u[len("file://"):]))
+PY
+exit 0

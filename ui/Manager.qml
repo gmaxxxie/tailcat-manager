@@ -333,6 +333,12 @@ Item {
     if (!p) { root.bridge.lastError = "Enter a file path"; return }
     root.bridge.fileSend(t, p, "")
   }
+  function browseSendFile() {
+    root.bridge.pick("file", function(p) { if (p) { root.sendPath = p; homePathField.forceActiveFocus() } })
+  }
+  function browseRecvDir() {
+    root.bridge.pick("dir", function(p) { if (p) root.recvDir = p })
+  }
   function sendPct() {
     if (root.bridge.sendTotal <= 0) return 0
     return Math.max(0, Math.min(1, root.bridge.sendSent / root.bridge.sendTotal))
@@ -398,7 +404,7 @@ Item {
   }
 
   function shortcutLine() {
-    return "s listener · r receive · j/k pick · a accept · d reject · t/f focus · Enter send · m manage · ? help · Esc close"
+    return "s listener · r receive · j/k pick · a accept · d reject · b browse · t/f focus · Enter send · m manage · ? help · Esc close"
   }
 
   // ---- Keyboard ----
@@ -417,6 +423,7 @@ Item {
       else if (key === Qt.Key_D) { rejectSelectedOffer(); event.accepted = true }
       else if (key === Qt.Key_T) { homeTargetField.forceActiveFocus(); event.accepted = true }
       else if (key === Qt.Key_F) { homePathField.forceActiveFocus(); event.accepted = true }
+      else if (key === Qt.Key_B) { root.browseSendFile(); event.accepted = true }
       else if (key === Qt.Key_Return || key === Qt.Key_Enter) { doSendFile(); event.accepted = true }
     } else {
       // Manage
@@ -554,8 +561,8 @@ Item {
       visible: root.showHelp
       spacing: Style.space(3)
       Text { width: parent.width; text: "RECEIVE A FILE  1. Start receiving (r)  2. Copy the address  3. The sender dials it  4. Accept/Reject here"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-      Text { width: parent.width; text: "SEND A FILE  1. Device (or paste a token)  2. File path  3. Send (Enter)  4. Progress → done"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
-      Text { width: parent.width; text: "SHORTCUTS  s listener · r receive · j/k pick · a accept · d reject · t/f focus · Enter send · m manage · ? help · Esc close"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+      Text { width: parent.width; text: "SEND A FILE  1. Device (or paste a token)  2. File path (Browse… picks one)  3. Send (Enter)  4. Progress → done"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+      Text { width: parent.width; text: "SHORTCUTS  s listener · r receive · j/k pick · a accept · d reject · b browse · t/f focus · Enter send · m manage · ? help · Esc close"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
     }
 
     // ---- content area: exactly the remaining height ----
@@ -654,6 +661,10 @@ Item {
               accent: root.accent
               text: root.recvDir
               onTextChanged: root.recvDir = text
+            }
+            Button {
+              text: "Browse…"
+              onClicked: root.browseRecvDir()
             }
             Text {
               Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
@@ -808,6 +819,7 @@ Item {
               onAccepted: root.doSendFile()
               Keys.onEscapePressed: root.grabNavFocus()
             }
+            Button { text: "Browse…"; onClicked: root.browseSendFile() }
             Button { text: "Send"; enabled: !root.bridge.sendActive; onClicked: root.doSendFile() }
             Button { text: "Cancel"; visible: root.bridge.sendActive; onClicked: root.bridge.cancelSend() }
             Text {

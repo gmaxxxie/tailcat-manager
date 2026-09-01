@@ -316,4 +316,34 @@ Item {
     stderr: StdioCollector { waitForEnd: false }
     onExited: function(code) { root.sendFinished(code) }
   }
+
+  // ---- native file/folder picker (XDG Desktop Portal) ----
+  // Runs ui/bin/tc-filepicker (file|dir) which opens the portal file chooser
+  // and prints the chosen local path (or nothing if cancelled).
+  readonly property string pickerScript: Quickshell.env("OMARCHY_TAILCAT_PICKER") || (pluginDir + "/bin/tc-filepicker")
+  property var pickCallback: null
+
+  Process {
+    id: pickerProc
+    running: false
+    stdout: StdioCollector { id: pickerOut; waitForEnd: true }
+    stderr: StdioCollector { waitForEnd: true }
+    onExited: function(code) { root.pickFinished(code) }
+  }
+
+  // pick(kind, onDone) — kind "file" or "dir"; onDone(path) with the chosen
+  // local path, or "" when the user cancelled.
+  function pick(kind, onDone) {
+    pickCallback = onDone
+    pickerProc.command = [root.pickerScript, kind || "file"]
+    pickerProc.running = true
+  }
+
+  function pickFinished(code) {
+    var cb = pickCallback
+    pickCallback = null
+    var path = String(pickerOut.text || "").split("\n")[0].trim()
+    if (cb) cb(path)
+    else if (code !== 0) root.lastError = "File picker failed"
+  }
 }

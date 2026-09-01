@@ -1,5 +1,38 @@
 # Lessons Learned
 
+### 2026-09-01 — XDG Desktop Portal file chooser via gdbus + dbus-monitor
+
+Type: lesson
+
+Summary:
+When no zenity/kdialog/yad is installed, the native file/folder picker on
+Wayland/Hyprland is the XDG Desktop Portal (`org.freedesktop.portal.FileChooser
+.OpenFile`, `directory:true` for folders) over the session bus. Call it with
+`gdbus call`, take the returned Request object path, then `dbus-monitor` on
+`type='signal',interface='org.freedesktop.portal.Request',member='Response',path=<req>`
+to get the async result. Response code is the first integer line after the
+header (portal emits `uint32`, gdbus may emit `int32` — extract with
+`grep -oE '[0-9]+' | tail -1` because `int32` itself contains digits); chosen
+files arrive as `string "file://…"` URIs that need percent-decoding.
+
+Details:
+- `file://` URIs may contain %20 etc.; decode with python3 `urllib.parse.unquote`.
+- A debug hook (`TC_PICKER_ECHO_REQ=1`) lets scripts simulate the Response for
+  automated testing without GUI interaction.
+- This machine's Hyprland 0.56 `hyprctl dispatch` uses a Lua dispatcher
+  (`hl.dsp.*`) and rejects the classic `focuswindow address:…` syntax.
+
+Evidence:
+`ui/bin/tc-filepicker`; scripted end-to-end tests on 2026-09-01.
+
+Action:
+Reuse `ui/bin/tc-filepicker` (`file`/`dir`) as the native picker for any
+path input; keep the text field as a fallback.
+
+Status: active
+
+---
+
 ### 2026-09-01 — QML: `!== ""` is a trap for backend-omitted fields; function lookup is lexical
 
 Type: lesson

@@ -28,6 +28,22 @@
     (default ~/Downloads); stale `lastError` clears at the start of every
     backend call; bar shows `󰞀 ⇩` while only the receiver is running.
 
+- **Native file picker for SEND/RECEIVE paths (2026-09-01) — DONE, pushed:**
+  - SEND FILE now has a "Browse…" button (and keyboard `b`) that opens the
+    XDG Desktop Portal file chooser (`ui/bin/tc-filepicker`, a gdbus→portal
+    wrapper: `OpenFile` + `dbus-monitor` on the request path; prints the chosen
+    local path, empty on cancel). The recv-dir field also got a folder
+    Browse… (portal `OpenFile` with `directory:true`). Text entry still works.
+  - No zenity/kdialog/yad on this box, so portal via gdbus was the right call;
+    GTK portal backend confirmed (Hyprland). Scripted-test hooks:
+    `TC_PICKER_ECHO_REQ=1` echoes the request path for simulated responses.
+  - Verified: native dialog opens; response parsing (uint32/int32, %-decode,
+    cancel) tested with simulated `org.freedesktop.portal.Request.Response`;
+    QML bridge `pick()` wiring tested with a fake picker script; harness clean.
+  - Gotchas hit: Hyprland 0.56 `hyprctl dispatch` uses a Lua dispatcher
+    (`hl.dsp.*`) and rejects classic `focuswindow address:…` syntax; `pkill -f`
+    self-match trap hit again (kill in a separate command / use `[f]` bracket).
+
 - **Widget-loading regression (2026-08-31 late) — FIXED:** the cleanup commit
   (82686b9) left an orphaned debug `Timer {` header, swallowing all subsequent
   root handlers → QML parse error (Expected token `}'` at EOF) → Manager

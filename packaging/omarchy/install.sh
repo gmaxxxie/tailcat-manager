@@ -18,6 +18,7 @@ cp "$UI_DIR/Panel.qml"       "$PLUGIN_DIR/"
 cp "$UI_DIR/Manager.qml"     "$PLUGIN_DIR/"
 cp "$UI_DIR/TailcatBridge.qml" "$PLUGIN_DIR/"
 cp "$UI_DIR/bin/omarchy-tailcat" "$PLUGIN_DIR/bin/"
+cp "$UI_DIR/bin/tc-filepicker" "$PLUGIN_DIR/bin/" && chmod +x "$PLUGIN_DIR/bin/tc-filepicker"
 
 echo "==> Rescanning shell plugins"
 omarchy-shell -q shell rescanPlugins || true

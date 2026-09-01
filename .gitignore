@@ -8,8 +8,9 @@
 *.test
 *.out
 
-# Built backend binary (built by packaging/omarchy/install.sh)
-/ui/bin/
+# Built backend binary (built by packaging/omarchy/install.sh). The native
+# file picker script (ui/bin/tc-filepicker) IS tracked source.
+/ui/bin/omarchy-tailcat
 
 # Build artifacts
 /dist/
