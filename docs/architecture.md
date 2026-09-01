@@ -8,12 +8,12 @@
 ## 0. 2026-09 simplification (READ THIS FIRST)
 
 The GUI was deliberately slimmed to **status + start/stop** and the complex
-surfaces moved to pi + CLI. What changed vs. the rest of this doc:
+surfaces moved to an AI agent + CLI. What changed vs. the rest of this doc:
 
 - **Widget = status + start/stop/restart + copy-address + self-ping.** The
   seven-tab/Home⇄Manage popup is gone (`ui/Manager.qml` is now ~200 lines).
-- **Devices / identities / services / diagnostics / file transfer = pi skill**
-  driving the `omarchy-tailcat` CLI (a `tailcat` pi skill exists on the
+- **Devices / identities / services / diagnostics / file transfer = AI agent**
+  driving the `omarchy-tailcat` CLI (a `tailcat` skill exists on the
   user's machine). The GUI no longer contains these pages.
 - **V0.2 native Go library adapter is WITHDRAWN and REMOVED.** `native.go`,
   `cmd/nativedemo`, the `file` subcommand/daemon, and the e2e native tests
@@ -22,7 +22,7 @@ surfaces moved to pi + CLI. What changed vs. the rest of this doc:
 - **File transfer runs in the terminal:** `tailcat recv <dir>` (write-only
   dropbox) and `tailcat cp <file> <addr>:` (scp-style, terminal progress).
   No GUI progress/accept UI — that was the only reason the native adapter
-  existed, and it is not needed when pi operates the terminal.
+  existed, and it is not needed when an AI agent operates the terminal.
 - `backend`/`cli.go` adapter remains the single interface (`Backend` in
   `backend/tailcat/backend.go`), used by both the widget bridge and the skill.
 

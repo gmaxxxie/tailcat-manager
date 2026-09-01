@@ -1,14 +1,14 @@
-# File Transfer (via terminal / pi)
+# File Transfer (via terminal / AI agent)
 
 **Status:** 2026-09 — the native (GUI) transfer backend was removed. Transfers
-run in the terminal, driven by pi via the `tailcat` skill or directly.
+run in the terminal, driven by an AI agent via the `tailcat` skill or directly.
 
 ## Why the native backend was removed
 
 - The V0.1 CLI adapter cannot express a *GUI* file transfer: `tailcat cp` wraps
   system `scp` (no programmatic progress/cancel/accept), `tailcat recv` is a
   write-only drop box, and text transfer has no CLI at all.
-- Those limits only matter for a **GUI**. In a terminal (pi's context) the CLI
+- Those limits only matter for a **GUI**. In a terminal (an AI agent's context) the CLI
   is exactly what you want: `scp` prints its own progress, `recv` accepts
   headlessly, and errors surface on stderr. So the V0.2 native adapter
   (`native.go`, file daemon, `file` subcommand) and its huge

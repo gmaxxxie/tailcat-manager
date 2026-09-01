@@ -1,5 +1,32 @@
 # Decisions
 
+### 2026-09-01 — User-facing copy says "AI agent", never a tool name
+
+Type: preference
+
+Summary:
+All user-facing copy (popup help, README, docs) must refer to the assistant
+that handles advanced management as **"an AI agent"** — not "pi" or any
+specific tool. The user runs several AI agents (pi, codex, claude, opencode),
+so tool names must not leak into product copy.
+
+Details:
+- Applied to the slim popup's bottom line (was Chinese "交给 pi"), manifest
+  descriptions, README Status/Development sections, `docs/architecture.md` §0,
+  and `docs/file-transfer.md`.
+- The `tailcat` skill file itself is already tool-agnostic (0 mentions of pi
+  in SKILL.md); only its location is pi-specific
+  (`~/.pi/agent/skills/tailcat/`). Re-locating it to a shared skills dir
+  (e.g. `~/.agents/skills/`) is an open option for other agents.
+
+Evidence:
+User instruction 2026-09-01: "弹窗的说明用英文描述，而且不只是 pi，用 ai agent 即可".
+
+Action:
+When writing popup/UI/doc copy for this project, use English + "an AI agent".
+
+Status: active
+
 ### 2026-09-01 — Simplify: slim widget (status+start/stop), management via pi skill, transfers in terminal
 
 Type: decision

@@ -29,10 +29,10 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
 
 - **Top-bar widget = status + start/stop only.** The popup is now a slim panel
   (listener status, Start/Stop/Restart, copy-address, self-ping). See `ui/`.
-- **Everything else = pi + CLI.** Saved devices, identities, shared services,
-  diagnostics, and **file transfer** are driven by pi via the `omarchy-tailcat`
-  / `tailcat` CLIs. A pi skill (`tailcat`) teaches this; ask pi to "manage
-  tailcat" in a terminal.
+- **Everything else = an AI agent + CLI.** Saved devices, identities, shared
+  services, diagnostics, and **file transfer** are driven by an AI agent via the
+  `omarchy-tailcat` / `tailcat` CLIs. A `tailcat` skill teaches this; ask an AI
+  agent to "manage tailcat" in a terminal.
 - **Native file-transfer backend removed.** The V0.2 native Go adapter
   (`native.go`, file daemon, `file` subcommand) and its huge
   `tailscale.com`/gVisor dependency tree were deleted. File transfer runs in
@@ -104,7 +104,7 @@ See `docs/architecture.md` for the architecture and the backend plan. This
 project follows the memory protocol in `AGENTS.md` (`memory/`).
 
 Current state: slim widget (status + start/stop) is live; management and file
-transfer happen via pi (`tailcat` skill) and the CLIs. Next up: refresh the
+transfer happen via an AI agent (`tailcat` skill) and the CLIs. Next up: refresh the
 widget/backend on the second machine and re-run the acceptance walkthrough
 (`docs/two-machine-test.md`), and decide whether to keep `upstream-tailcat/`
 in the repo.
