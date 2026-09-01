@@ -17,7 +17,7 @@ set -euo pipefail
 
 REPO="gmaxxxie/tailcat-manager"
 BRANCH="master"
-VERSION="v0.1.0"
+VERSION="v0.2.0"
 PLUGIN_ID="dev.omarchy.tailcat"
 PLUGIN_DIR="${HOME}/.config/omarchy/plugins/${PLUGIN_ID}"
 SOURCE_DIR="${HOME}/tailcat-manager"

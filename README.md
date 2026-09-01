@@ -55,6 +55,23 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
   plugin, enables it, puts it on the bar).
 - Dev validation harness: `quickshell -p ui/Harness.qml` (see `ui/README.md`).
 
+**V0.2 native file transfer — implemented and tested** (`backend/` + `ui/`):
+
+- Native Go adapter (`tailcat/native.go`) with a thin framing protocol over
+  TCP (JSON-line header + raw body): `file`/`accept`/`reject`/`error`/`done`/
+  `cancel` ops, progress, SHA-256 verify, safe-name + O_EXCL collision
+  refusal, partial cleanup.
+- CLI: `omarchy-tailcat file send|recv-start|recv-stop|recv-status|recv-respond`
+  (send one-shot with JSON-lines progress; recv is a state-persisted daemon
+  mirroring the serve listener pattern).
+- GUI: RECEIVE FILE (start/stop, share address + copy, incoming
+  Accept/Reject + progress, completed list) and SEND FILE (device chips +
+  target/path, progress, cancel) on Home; native XDG Desktop Portal file/
+  folder picker (`ui/bin/tc-filepicker`) on the Browse… buttons.
+- Tests: protocol edge cases over TCP loopback + end-to-end through a real
+  WireGuard data plane (local DERP, separate processes); real-DERP 400 KB
+  transfer verified SHA-256-intact. See `docs/file-transfer.md`.
+
 Upstream reference copy (pinned for study): `upstream-tailcat/` (a clone of
 `github.com/tailscale/tailcat`, do not edit).
 
@@ -84,8 +101,8 @@ tests/           (unit tests live inside backend/; hermetic e2e in backend/e2e)
 See `docs/architecture.md` §10 for the plan. This project follows the memory
 protocol in `AGENTS.md` (`memory/`).
 
-Next up: Quickshell GUI shell (`ui/`) wired to the backend, then the V0.1
-acceptance walkthrough on two machines, then V0.2 native file transfer.
+Next up: V0.3 text transfer (same port/protocol, `op:"text"`), then the
+V0.1+V0.2 two-machine acceptance walkthrough (`docs/two-machine-test.md`).
 
 ## License
 
