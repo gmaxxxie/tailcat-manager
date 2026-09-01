@@ -1,5 +1,39 @@
 # Lessons Learned
 
+### 2026-09-01 — KeyboardPanel's `bar` is injected AFTER the bar loads; don't read position at onCompleted
+
+Type: lesson
+
+Summary:
+`qs.Ui.KeyboardPanel` binds `bar` only once the real Bar instance is injected
+(which happens after the shell mounts the bar). In a plugin's
+`Component.onCompleted` the panel's `bar` is still null and `cardOrigin`
+falls back to `(margin, margin)` — so reading bar/position/cardOrigin there
+gives the WRONG answer (and `centerOnBar` appears broken when it isn't). The
+bar resolves to the real Bar later; `barPos` then reads "top" and
+`cardOrigin` computes the centered position correctly.
+
+Details:
+- Symptom: popup looked off-center; `panel.cardOrigin` printed QPointF(5,5)
+  and `panel.bar`=null at onCompleted, so I suspected centerOnBar failed.
+- Reality: 4s later `panel.bar`=Bar instance, `barPos`=top,
+  `cardOrigin`=QPointF(395,35) = screenW/2 - contentWidth/2 (centered). OCR
+  confirmed the card is centered; the "off-center" was my color-based bbox
+  detecting a different window's dark pixels.
+- Fixed the popup by setting `centerOnBar: true` in the plugin Panel.qml
+  (correct), and measuring position by OCR text coordinates, not bg-color bbox.
+
+Evidence:
+2026-09-01 popup-centering pass (this session).
+
+Action:
+To verify popup position, use OCR coordinates of known text, never a
+background-color bounding box; and read KeyboardPanel state only after open.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Tailcat address short form: the tail is fixed, use the random middle
 
 Type: lesson
