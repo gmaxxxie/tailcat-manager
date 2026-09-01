@@ -267,15 +267,25 @@ Item {
     run(["devices", "touch", String(id || "")], function(data) { if (onSuccess) onSuccess(data); refresh() })
   }
 
-  function createIdentity(name, kind, region, onSuccess) {
+  function createIdentity(name, kind, region, onSuccess, onError) {
     var args = ["identities", "create", String(name || "")]
     if (kind === "client") args.push("--client")
     if (region && region !== "") args.push("--region=" + region)
-    run(args, function(data) { if (onSuccess) onSuccess(data); refresh() })
+    run(args, function(data) { if (onSuccess) onSuccess(data); refresh() }, onError)
   }
 
   function deleteIdentity(name, onSuccess) {
     run(["identities", "delete", String(name || "")], function(data) { if (onSuccess) onSuccess(data); refresh() })
+  }
+
+  // Current client public key (nodekey:…) — this machine's identity when
+  // talking to servers that enforce an allow-list.
+  function identityPub(onSuccess) {
+    run(["identities", "pub"], function(data) {
+      if (onSuccess) onSuccess(data || {})
+    }, function(data, message) {
+      if (onSuccess) onSuccess({ error: message })
+    })
   }
 
   // ---- V0.2 file transfer ----

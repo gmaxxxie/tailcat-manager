@@ -2,11 +2,11 @@
 
 - `manifest.json` — plugin manifest (kind: bar-widget)
 - `Panel.qml` — bar widget entry point (status + opens the manager popup)
-- `Manager.qml` — the manager UI, organized into five tabs: **Status**
-  (listener + running services), **SSH** (open `tailcat ssh` in a terminal),
-  **Files** (receive/send + SFTP folder share), **Proxy** (SOCKS5 + exit
-  node), **Manage** (devices / identities / services / diagnostics).
-  Keyboard + touch friendly.
+- `Manager.qml` — the manager UI, organized around devices + capabilities:
+  **This Device** (accept connections, who can connect, receive files),
+  **Devices** (other machines — connect/SSH/send files), **Services** (SSH,
+  shared folders, ports, exit node), **More** (identities, SOCKS proxy,
+  diagnostics). Keyboard + touch friendly.
 - `TailcatBridge.qml` — QML ↔ backend bridge: runs `omarchy-tailcat` with
   structured argv, serialized FIFO queue, JSON parse
 - `bin/omarchy-tailcat` — the Go backend (built; not committed)

@@ -403,6 +403,25 @@ func ping(ctx context.Context, store *config.Store, args []string) int {
 
 // --- devices ---
 
+// devicesOut renders devices, omitting zero-valued timestamps (Go's omitempty
+// does not skip zero time.Time, which the UI would mis-parse as a distant past).
+func devicesOut(devs []domain.Device) []map[string]any {
+	out := make([]map[string]any, 0, len(devs))
+	for _, d := range devs {
+		m := map[string]any{
+			"id": d.ID, "name": d.Name, "target": d.Target, "kind": d.Kind, "createdAt": d.CreatedAt,
+		}
+		if !d.LastConnectedAt.IsZero() {
+			m["lastConnectedAt"] = d.LastConnectedAt
+		}
+		if d.Notes != "" {
+			m["notes"] = d.Notes
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
 func devices(reg *domain.Registry, args []string) int {
 	if len(args) == 0 {
 		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "usage: devices list|add|remove|rename|touch"))
@@ -413,7 +432,7 @@ func devices(reg *domain.Registry, args []string) int {
 		if err != nil {
 			return errOut(err)
 		}
-		out(devs)
+		out(devicesOut(devs))
 		return 0
 	case "add":
 		if len(args) < 3 {

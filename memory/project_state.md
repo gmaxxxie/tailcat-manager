@@ -2,21 +2,16 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; **V0.3 tabbed UI (SSH/SOCKS/exit-node/files-share) done + allow-list done**; next: two-machine acceptance + V0.3 text
+### Status: V0.1 + V0.2 done & live; **V0.3 device-hub UI (This Device/Devices/Services/More) done**; next: two-machine acceptance + V0.3 text
 
-> **IMPORTANT — 2026-09-01 late refactor: the full GUI is now a 5-tab popup.**
-> Manager.qml restructured from Home⇄Manage into primary tabs **Status**
-> (listener + running services), **SSH** (open `tailcat ssh` in a terminal),
-> **Files** (receive/send + SFTP folder share), **Proxy** (SOCKS5 proxy +
-> exit node), **Manage** (devices/identities/services/diagnostics). Tagged
-> `pre-tab-refactor` before starting. New backend subcommands:
-> `socks start|stop|status` (detached `tailcat socks` daemon, state in
-> `socks/`), `ssh open|status` (launches `tailcat ssh` in a detected
-> terminal; `OMARCHY_TAILCAT_TERMINAL` overrides). Serve spec is now
-> persisted (`spec.json`) so a bare `serve start`/`restart` reuses the last
-> services+key instead of going broad; `serve spec` get/set/clear. The
-> `files` (SFTP share) service now works — dir+mode passed via
-> `--files=DIR[:mode]` (previously adding a files service failed at start).
+> **IMPORTANT — 2026-09-01 final model: device-hub, not server/client.**
+> Per the user's product brief, the UI is organized around devices + capabilities:
+> **This Device** (accept connections / address / who can connect / receive
+> files), **Devices** (other machines: connect/SSH/send files, last-seen),
+> **Services** (SSH / shared folder (SFTP) / ports / exit node), **More**
+> (identities / SOCKS proxy / diagnostics). No Server/Client and no
+> Share/Connect role anywhere. The role split (earlier today) was removed;
+> backend `role` command deleted.
 
 > **IMPORTANT — second worktree / direction (2026-09-01):** the user's current
 > direction lives in a SEPARATE repo **`/home/max/tailcat-manager`** (not this

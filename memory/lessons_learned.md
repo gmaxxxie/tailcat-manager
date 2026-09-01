@@ -1,5 +1,33 @@
 # Lessons Learned
 
+### 2026-09-01 — Go json `omitempty` does NOT skip zero `time.Time`; QML mis-parses it as ancient
+
+Type: lesson
+
+Summary:
+`json:"lastConnectedAt,omitempty"` on a `time.Time` still serializes the zero
+value (`0001-01-01T00:00:00Z`), because omitempty only skips scalar zero
+values, not structs. QML's `Date.parse` then turned it into a ~2000-year-old
+timestamp (UI showed "seen 739860d"). Fix: when rendering, omit zero timestamps
+by building the output map explicitly (`devicesOut`), and defensively return
+"" from the formatter when `Date.parse` is NaN.
+
+Details:
+- Symptom: Devices list showed "seen 739860d" for a never-connected device.
+- Fix: `devicesOut()` maps devices to plain maps and only sets
+  `lastConnectedAt` when `!IsZero()`; `fmtAgo` bails on NaN.
+
+Evidence:
+2026-09-01 device-hub refactor (this session).
+
+Action:
+Never rely on `omitempty` to hide a zero time.Time when serializing for the
+QML UI; drop the field explicitly when it is zero.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Omarchy plugin hot-reload is unreliable; clear qmlcache + restart shell to load new QML
 
 Type: lesson

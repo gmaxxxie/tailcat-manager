@@ -1,5 +1,44 @@
 # Decisions
 
+### 2026-09-01 — Product model: devices + capabilities (never server/client)
+
+Type: decision
+
+Summary:
+The Tailcat Manager is a **peer-to-peer device connection manager**: the UI
+organizes around **This Device** (accept connections, address, who can
+connect, receive files), **Devices** (other machines: connect/SSH/send files),
+**Services** (what this machine offers: SSH, folders, ports, exit node), and
+**More** (identities, SOCKS proxy, diagnostics). No Server/Client and no
+Share/Connect role anywhere in the product.
+
+Details:
+- A machine can accept connections AND reach out — those are two independent
+  capabilities, both on by default, not a mode to pick.
+- "Allow connections" maps to the listener (serve start/stop); connecting to a
+  device maps to client ops (ping/ssh/file). The UI never exposes which side
+  is server/client.
+- A Share/Connect role split was prototyped and then removed at the user's
+  direction (server/client thinking is an implementation detail, not a UX).
+  The backend `role` command that supported it was deleted; `devices` show
+  `lastConnectedAt` ("seen …"/"never") instead of a fake live session list
+  (Tailcat has no active-session API).
+- Future capabilities (clipboard, input, screen, LAN gateway) slot into
+  Devices/Services without touching the core model.
+
+Evidence:
+User product brief 2026-09-01 (devices+capabilities model); implemented in
+Manager.qml (This Device/Devices/Services/More), OCR-verified on the live shell.
+
+Action:
+Keep the 4 tabs and the device/capability language; extend Services with new
+capabilities rather than new tabs.
+
+Status: active
+
+---
+
+
 ### 2026-09-01 — Allow-list UI: who may connect to the listener
 
 Type: decision

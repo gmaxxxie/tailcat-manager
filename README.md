@@ -72,13 +72,14 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
   WireGuard data plane (local DERP, separate processes); real-DERP 400 KB
   transfer verified SHA-256-intact. See `docs/file-transfer.md`.
 
-**V0.3 tabbed UI + SSH / SOCKS5 proxy / exit node — implemented**
+**V0.3 device-hub UI + SSH / SOCKS5 proxy / exit node — implemented**
 
-- **Tabbed popup:** Manager.qml restructured into five tabs — **Status**
-  (listener start/stop/restart/ping, running services, address, key), **SSH**
-  (open the system ssh client through a tailcat server in a terminal),
-  **Files** (receive + send + SFTP folder share), **Proxy** (SOCKS5 proxy +
-  exit node), and **Manage** (devices / identities / services / diagnostics).
+- **Device-hub popup:** Manager.qml is organized around **devices + capabilities**
+  (never server/client): **This Device** (accept connections, address, who can
+  connect, receive files), **Devices** (other machines — connect / SSH / send
+  files / ping, last-seen), **Services** (what this machine offers: SSH, shared
+  folders (SFTP), ports, exit node), and **More** (identities, SOCKS proxy,
+  diagnostics).
 - **SSH tab:** `omarchy-tailcat ssh open <target> [--port] [--user] [--cmd]`
   builds `tailcat ssh …` and launches it in a detected terminal
   (ghostty/alacritty/kitty/foot/…, override `OMARCHY_TAILCAT_TERMINAL`); a
