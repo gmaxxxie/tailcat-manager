@@ -20,6 +20,13 @@
 > backend, x86_64+arm64); v0.2.0 release re-titled "superseded". The `tailcat`
 > skill moved from `~/.pi/agent/skills/tailcat/` to the shared
 > `~/.agents/skills/tailcat/`. This full-feature repo is kept as history.
+> **UPDATE 2026-09-01 (final): REVERTED — the full GUI version is the product.**
+> The slim version was a successful test (two-machine transfer verified in the
+> terminal, AI-agent-managed, copy fix) but the user prefers the **full GUI
+> popup + native file transfer**. GitHub master is being force-pushed back to
+> this full build; the slim work is archived on the `slim` branch. The copy
+> fix (`execDetached wl-copy --`, not createQmlObject) and the English+
+> "AI agent" copy preference apply to the full build too.
 
 - **Release v0.2.0 (2026-09-01) — DONE, published & verified:**
   - `quick-install.sh` bumped `VERSION=v0.2.0`; README got a V0.2 file-transfer

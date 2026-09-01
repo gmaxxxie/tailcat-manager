@@ -198,10 +198,10 @@ Item {
 
   function copyText(t) {
     if (!t) return
-    var proc = Qt.createQmlObject(
-      'import Quickshell; import Quickshell.Io; Item { Process { id: p; running: false; command: ["wl-copy"]; stdin: StdioWriter { } ; onExited: function(c) { p.destroy(); } } function run(t) { p.stdin.write(t); p.running = true; } }',
-      root, "clipcopy")
-    if (proc) proc.run(String(t))
+    // wl-copy -- <text>: pass text as argv (no shell, no stdin-EOF dependency).
+    // The old createQmlObject/Process+StdioWriter version never closed stdin,
+    // so wl-copy blocked and nothing was copied.
+    Quickshell.execDetached(["wl-copy", "--", String(t)])
   }
 
   // ---- Devices ----
@@ -563,6 +563,7 @@ Item {
       Text { width: parent.width; text: "RECEIVE A FILE  1. Start receiving (r)  2. Copy the address  3. The sender dials it  4. Accept/Reject here"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       Text { width: parent.width; text: "SEND A FILE  1. Device (or paste a token)  2. File path (Browse… picks one)  3. Send (Enter)  4. Progress → done"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       Text { width: parent.width; text: "SHORTCUTS  s listener · r receive · j/k pick · a accept · d reject · b browse · t/f focus · Enter send · m manage · ? help · Esc close"; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+      Text { width: parent.width; text: "STUCK?  Ask an AI agent — share this panel or the Diagnostics tab, and it can walk you through setup, transfers, and troubleshooting."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
     }
 
     // ---- content area: exactly the remaining height ----
