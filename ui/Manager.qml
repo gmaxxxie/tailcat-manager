@@ -5,12 +5,14 @@ import Quickshell
 import qs.Commons
 import qs.Ui
 
-// Tailcat Manager — slim bar popup. Deliberately minimal by design:
-// it shows listener status and does quick start/stop/restart, plus
-// copy-address and self-ping. Everything else — saved devices,
-// identities, shared services, diagnostics, and file transfer — is
-// handled by an AI agent via the `omarchy-tailcat` / `tailcat` CLIs
-// (see the `tailcat` skill). File transfer runs in the terminal, not here.
+// Tailcat Manager — slim bar popup. Shows listener status and quick
+// start/stop/restart, copy-address and self-ping, plus one-click SSH to a
+// peer (opens a terminal running `tailcat ssh <target>`; the peer must serve
+// `no-auth-ssh` — the tunnel itself is the identity). Everything else — saved
+// devices, identities, shared services, diagnostics, and file transfer — is
+// handled by an AI agent via the `omarchy-tailcat` / `tailcat` CLIs (see the
+// `tailcat` skill); file transfer is managed from the web UI
+// (`omarchy-tailcat web`), not the popup.
 //
 // Keyboard: Esc close · s start/stop · p ping · c copy address.
 Item {
@@ -76,6 +78,19 @@ Item {
     // The old createQmlObject/Process+StdioWriter version never closed stdin,
     // so wl-copy blocked and nothing was copied.
     Quickshell.execDetached(["wl-copy", "--", String(t)])
+  }
+
+  function sshTo() {
+    var target = sshTarget.text.trim()
+    if (!target) return
+    // Open a terminal running `tailcat ssh <target>`. The peer must serve
+    // `no-auth-ssh`; the tailcat tunnel itself is the identity/auth. The
+    // target is passed as an argv position ($1) so nothing is shell-parsed.
+    Quickshell.execDetached([
+      "sh", "-c",
+      'T=${TERMINAL:-}; [ -z "$T" ] && for c in kitty foot alacritty; do command -v "$c" >/dev/null 2>&1 && T=$c && break; done; [ -z "$T" ] && T=xterm; exec "$T" -e tailcat ssh "$1"',
+      "tc-ssh", target])
+    root.bridge.lastError = ""
   }
 
   Keys.onPressed: function(event) {
@@ -164,6 +179,43 @@ Item {
       visible: root.bridge && root.bridge.lastError !== ""
       text: root.bridge ? root.bridge.lastError : ""
       color: root.urgent
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      wrapMode: Text.WordWrap
+    }
+
+    PanelSeparator { Layout.fillWidth: true; foreground: root.foreground; strength: 0.32 }
+
+    // ---- One-click SSH to a peer ----
+    Text {
+      Layout.fillWidth: true
+      text: "SSH TO A PEER"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      TextField {
+        id: sshTarget
+        Layout.fillWidth: true
+        placeholderText: "tc… address or DNS name"
+        foreground: root.foreground
+        accent: root.accent
+        onAccepted: root.sshTo()
+        Keys.onEscapePressed: root.grabNavFocus()
+      }
+      Button {
+        text: "SSH"
+        enabled: sshTarget.text.trim() !== ""
+        onClicked: root.sshTo()
+      }
+    }
+    Text {
+      Layout.fillWidth: true
+      text: "Peer must run: omarchy-tailcat serve start no-auth-ssh (tunnel = identity, no password)"
+      color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
