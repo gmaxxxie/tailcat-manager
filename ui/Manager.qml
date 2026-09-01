@@ -153,6 +153,10 @@ Item {
   onOpenedChanged: {
     if (opened) Qt.callLater(function() {
       root.grabNavFocus()
+      // Re-read the persisted spec every time the popup opens (services, key,
+      // allow list) so external changes show up; the flag is re-set so the
+      // 10s refresh does not overwrite in-session edits.
+      root.configuredSynced = false
       if (root.bridge) root.bridge.refresh()
     })
   }
