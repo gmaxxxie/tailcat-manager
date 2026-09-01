@@ -523,11 +523,13 @@ Item {
     root.bridge.identityPub(function(d) { cb(d && d.publicKey || "") })
   }
   function secureLinkStatus() {
-    if (root.allowNone) return "● Blocked: fixed address, no device can connect yet"
-    if (root.usingFixedKey() && root.allowList.length > 0)
-      return "● Fixed address · " + root.allowList.length + " allowed device" + (root.allowList.length > 1 ? "s" : "")
-    if (root.usingFixedKey()) return "⚠ Fixed address · no devices allowed — anyone with the address can connect"
-    return "○ Temporary address (changes each start) · open to anyone with it"
+    if (root.bridge.listener && root.bridge.listener.running !== true) return "○ Connections off — nobody can connect until you turn on Allow connections"
+    if (root.allowNone) return "● Blocked: no device can connect until you allow one"
+    var fixed = root.usingFixedKey()
+    if (root.allowList.length > 0)
+      return (fixed ? "● Fixed address" : "○ Temporary address") + " · " + root.allowList.length + " allowed device" + (root.allowList.length > 1 ? "s" : "")
+    if (fixed) return "⚠ Fixed address · no devices allowed — anyone with the address can connect"
+    return "○ Temporary address (new each start) · open to anyone with it"
   }
 
   // ---- Connect (used by device add) ----
@@ -856,6 +858,39 @@ Item {
               color: (root.allowNone || (root.usingFixedKey() && root.allowUnsafe())) ? root.urgent : root.accent
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
+              wrapMode: Text.WordWrap
+            }
+            // Address type: fixed (stable) vs ephemeral (new each start).
+            Row {
+              width: parent.width
+              spacing: Style.space(4)
+              Text {
+                text: "Address:"
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                anchors.verticalCenter: parent.verticalCenter
+              }
+              Repeater {
+                model: root.identityChips()
+                Button {
+                  text: modelData.name
+                  selected: modelData.selected
+                  fontFamily: root.fontFamily
+                  fontSize: Style.font.caption
+                  horizontalPadding: Style.spacing.sm
+                  foreground: root.foreground
+                  accent: root.accent
+                  onClicked: root.listenerKey = modelData.key
+                }
+              }
+            }
+            Text {
+              width: parent.width
+              text: "Ephemeral = a new address each start. Fixed (a saved identity) = a stable address, pairs with the whitelist above. Change takes effect on Restart."
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
               wrapMode: Text.WordWrap
             }
             Row {
