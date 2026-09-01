@@ -1,5 +1,37 @@
 # Lessons Learned
 
+### 2026-09-01 — Verify listener security from the process cmdline, not the popup
+
+Type: lesson
+
+Summary:
+The popup's allow-list/services are in-memory UI state until a listener
+restart persists them. The actual gate is the running `tailcat serve` process's
+`--allow`/`serve …` args — a popup showing "Fixed address · 1 allowed device"
+can be a lie if that key was never restarted into the process. To answer "can
+any device connect?", read `/proc/<pid>/cmdline` of the listener (pid from
+`serve status`): presence of `--allow=nodekey:…` = whitelist enforced; a bare
+`serve all` with no `--allow` = anyone with the address, all ports.
+
+Details:
+- Found this machine's listener running `--key=default serve all` with NO
+  --allow while the popup showed 1 allowed device (in-memory only) → open to
+  everyone. Fixed by persisting the device key to spec.json + `serve restart`;
+  the new process cmdline then carries `--allow=nodekey:8f18…`.
+- The popup key's short form (nodekey:8f..ec73ae65) is this machine's own
+  client-default — OCR had misread the tail (aeb5 vs ae65).
+
+Evidence:
+2026-09-01 security review (this session).
+
+Action:
+When asked whether a machine is locked down, trust the listener cmdline
+(--allow/--allow=none), and always restart after adding allow-list keys.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Hide config blocks that depend on a master switch; show why
 
 Type: lesson
