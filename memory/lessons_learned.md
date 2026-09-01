@@ -1,5 +1,60 @@
 # Lessons Learned
 
+### 2026-09-01 — `gh release upload file#label` is a display label, NOT a rename; ship the right filename
+
+Type: lesson
+
+Summary:
+`gh release upload vX file#newname` sets a *display label* on the asset; the
+actual GitHub asset **name is the source filename**. `quick-install.sh`
+downloads by asset name (`omarchy-tailcat-<arch>-linux`), so a label-only
+upload silently breaks the prebuilt path (installer falls back to a source
+build). Fix: name the local file exactly what the asset must be and upload
+that; verify with `gh api .../releases/tags/<tag> --jq '.assets[].name'`.
+
+Details:
+- `gh release create` with bare paths also keeps source filenames.
+- Also: `gh release view --json assets` can show stale names right after
+  delete+upload; trust `gh api` for the ground truth.
+
+Evidence:
+2026-09-01 v0.2.0 publish (assets came out as `tc-static`/`tc-arm64` twice).
+
+Action:
+When publishing releases, cp the binary to the exact target asset name before
+`gh release upload`, then confirm via `gh api` before telling the user it's
+live.
+
+Status: active
+
+### 2026-09-01 — Dev binaries must NOT live in /tmp behind a symlink (cleanup → dangling)
+
+Type: lesson
+
+Summary:
+The dev `tailcat` was built to `/tmp/tailcat-build/tailcat` with
+`~/.local/bin/tailcat` as a symlink. Any `/tmp` cleanup (reboot, tmpreaper)
+leaves the symlink dangling; the manager then reports `available:false`
+("tailcat is not installed") even though the user installed it — a confusing
+false negative. Install dev tools as **real files** under `~/.local/bin` (or
+`~/.local/share/...`), never a symlink into /tmp.
+
+Details:
+- Symptom: `omarchy-tailcat version` → `{"available":false,...}`; `which
+  tailcat` finds the symlink but executing it gives "No such file or directory".
+- Fix: `rm ~/.local/bin/tailcat && cd upstream-tailcat && go build -o
+  ~/.local/bin/tailcat ./cmd/tailcat`; `available:true` restored.
+
+Evidence:
+2026-09-01 — found while preparing the two-machine acceptance after a /tmp
+cleanup wiped the build dir.
+
+Action:
+Keep `tailcat` as a real binary in `~/.local/bin`. If a build dir in /tmp is
+needed, copy the result out, don't symlink.
+
+Status: active
+
 ### 2026-09-01 — XDG Desktop Portal file chooser via gdbus + dbus-monitor
 
 Type: lesson

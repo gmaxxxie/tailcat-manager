@@ -2,7 +2,25 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; UI restructured (Home command panel + Manage); widget-failure bug fixed
+### Status: V0.1 + V0.2 done & live; **v0.2.0 released**; next: two-machine acceptance + V0.3 text
+
+- **Release v0.2.0 (2026-09-01) — DONE, published & verified:**
+  - `quick-install.sh` bumped `VERSION=v0.2.0`; README got a V0.2 file-transfer
+    section + refreshed "Next up".
+  - Static prebuilt binaries (CGO_ENABLED=0, runs on any glibc/musl) uploaded
+    as `omarchy-tailcat-x86_64-linux` + `omarchy-tailcat-arm64-linux` (arm64
+    is cross-built; first time shipping arm64).
+  - Verified end-to-end: raw.githubusercontent CDN serves the new script
+    (VERSION=v0.2.0), asset downloads + runs (version/file subcommands), and a
+    real install via `curl|bash` took the **prebuilt** path (no source fallback).
+  - GOTCHA: `gh release upload file#label` sets a display LABEL, not the asset
+    name — the asset keeps the source filename. To ship `omarchy-tailcat-*
+    -linux` the local file must be named that. See lessons.
+  - Dev-env repair: `~/.local/bin/tailcat` was a symlink into `/tmp` and went
+    DANGLING after a `/tmp` cleanup (widget showed "tailcat is not installed",
+    `available:false`). Rebuilt upstream tailcat directly to
+    `~/.local/bin/tailcat` as a real file; `version` → `available:true`;
+    serve start/status/stop verified clean.
 
 - **Overall test + UI optimization pass (2026-09-01) — DONE, pushed:**
   - Full backend suite green (unit + hermetic e2e incl. real-DERP file transfer,
@@ -83,12 +101,22 @@
     SHA-256; GUI bridge (HarnessFile) real-DERP transfer intact; live shell
     loads 7 tabs clean (pid journal clean).
 
-### Next actions
-1. **Two-machine acceptance** (V0.1 + V0.2 together) — needs the user's 2nd
-   machine: install tailcat + plugin on both, share listener addr / receiver
-   addr, transfer a file both ways, test Direct-vs-DERP, reject/cancel.
-2. V0.3 text transfer (same port/protocol, `op:"text"` message; Add a Send
-   Text UI row + incoming text notification).
+### Next actions (current, 2026-09-01)
+1. **Two-machine acceptance** (V0.1 + V0.2 together) — the only remaining gate
+   before V0.1+V0.2 is "done for real". Ready to run: `docs/two-machine-test.md`
+   checklist, v0.2.0 installer, this box's tailcat restored (available:true).
+   Needs the user's 2nd machine: install tailcat + manager on both, share
+   listener addr / receiver addr, transfer a file both ways, test
+   Direct-vs-DERP, reject/cancel.
+2. **V0.3 text transfer** — protocol already reserves `op:"text"`
+   (`docs/file-transfer.md` §4.5) but nothing wired: backend message path +
+   `file send-text/recv-text` CLI, then a Send Text UI row + incoming text
+   notification in Manager.qml.
+3. License decision (BSD-3-Clause vs MIT) — deferred to next release.
+4. Packaging: `packaging/omarchy/PKGBUILD` referenced in decisions but not yet
+   written (only dev install.sh + README). Do if/when distributing via
+   AUR/Omarchy repo.
+5. README + quick-install.sh are current for v0.2.0 (done this session).
 
 - **V0.1** backend + GUI (Quickshell bar widget) live on this machine; layout
   + Start fixed (stale-reload issue). See earlier sections.
