@@ -58,6 +58,60 @@ func TestServeSpecPersistedAndReported(t *testing.T) {
 	}
 }
 
+func TestServeSpecAllowList(t *testing.T) {
+	env := []string{"OMARCHY_TAILCAT_CONFIG_DIR=" + t.TempDir()}
+
+	nk1 := "nodekey:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	nk2 := "nodekey:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+	// Set a spec with an allow-list and --allow=none round-trips.
+	out, err := runBackend(t, env, "serve", "spec", "no-auth-ssh", "--allow="+nk1+","+nk2, "--key=default")
+	if err != nil {
+		t.Fatalf("spec set allow: %v\n%s", err, out)
+	}
+	out, err = runBackend(t, env, "serve", "spec")
+	if err != nil {
+		t.Fatalf("spec get: %v\n%s", err, out)
+	}
+	sp := decodeJSON(t, out)
+	allow, _ := sp["allow"].([]any)
+	if len(allow) != 2 {
+		t.Fatalf("allow list: %s", out)
+	}
+	if sp["allowNone"] == true {
+		t.Fatalf("allowNone should be false here: %s", out)
+	}
+
+	// status -> configured carries the allow-list for the UI to load.
+	out, err = runBackend(t, env, "status")
+	if err != nil {
+		t.Fatalf("status: %v\n%s", err, out)
+	}
+	var st map[string]any
+	if err := json.Unmarshal([]byte(out), &st); err != nil {
+		t.Fatalf("status not JSON: %s", out)
+	}
+	cfg, _ := st["configured"].(map[string]any)
+	cfgAllow, _ := cfg["allow"].([]any)
+	if len(cfgAllow) != 2 {
+		t.Fatalf("status configured allow: %s", out)
+	}
+
+	// --allow=none sets allowNone and is mutually exclusive.
+	out, err = runBackend(t, env, "serve", "spec", "--allow=none", "--key=default")
+	if err != nil {
+		t.Fatalf("spec allow=none: %v\n%s", err, out)
+	}
+	out, err = runBackend(t, env, "serve", "spec")
+	if err != nil {
+		t.Fatalf("spec get after none: %v\n%s", err, out)
+	}
+	sp = decodeJSON(t, out)
+	if sp["allowNone"] != true {
+		t.Fatalf("allowNone should be true: %s", out)
+	}
+}
+
 func TestSocksRejectsBadFlag(t *testing.T) {
 	env := []string{"OMARCHY_TAILCAT_CONFIG_DIR=" + t.TempDir()}
 	out, err := runBackend(t, env, "socks", "start", "--port=99999")

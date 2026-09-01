@@ -2,7 +2,7 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; **V0.3 tabbed UI (SSH/SOCKS/exit-node/files-share) done**; next: two-machine acceptance + V0.3 text
+### Status: V0.1 + V0.2 done & live; **V0.3 tabbed UI (SSH/SOCKS/exit-node/files-share) done + allow-list done**; next: two-machine acceptance + V0.3 text
 
 > **IMPORTANT — 2026-09-01 late refactor: the full GUI is now a 5-tab popup.**
 > Manager.qml restructured from Home⇄Manage into primary tabs **Status**

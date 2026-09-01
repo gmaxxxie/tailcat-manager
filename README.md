@@ -91,6 +91,12 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
 - **SFTP folder share:** the `files` service now actually works — a directory
   + ro/rw/wo mode is passed through as `--files=DIR[:mode]` (this was a
   latent broken path: adding a files service used to fail at start).
+- **Allow list (who can connect):** Status tab gained an ALLOW LIST block —
+  add/remove client public keys (`nodekey:…`), a `--allow=none`
+  "block all clients" toggle, and a warning when a fixed (stable-address)
+  identity is served with no allow list (anyone with the address could
+  connect). The allow-list persists with the serve spec and is passed to
+  `tailcat serve --allow=…`.
 - **Persisted serve spec:** the listener's services+key are saved to
   `spec.json`; a bare `serve start`/`serve restart` reuses them instead of
   silently going broad, and the Status/Manage tabs load them on open.

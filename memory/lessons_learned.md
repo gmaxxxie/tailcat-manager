@@ -1,5 +1,47 @@
 # Lessons Learned
 
+### 2026-09-01 — Omarchy plugin hot-reload is unreliable; clear qmlcache + restart shell to load new QML
+
+Type: lesson
+
+Summary:
+`packaging/omarchy/install.sh`'s `omarchy-shell -q shell rescanPlugins` can fail
+silently (-q swallows errors) and Quickshell's QML disk cache
+(`~/.cache/quickshell/qmlcache/`) holds stale compiled components, so a local
+plugin update showed the OLD popup even though the files on disk were new. Fix:
+`rm -rf ~/.cache/quickshell/qmlcache`, then restart the shell (`pkill -f
+"quickshell -n -p /usr/share/omarchy/shell"`; the `omarchy-launch-shell`
+supervisor auto-relaunches it). Verify via the shell log
+(`/run/user/1000/quickshell/by-id/*/log.qslog` shows "Local plugin changed,
+reloading") and by OCR-ing the popup after `omarchy-shell shell summon
+<pluginId> '{}'`.
+
+Details:
+- After copying new files + rescan, the popup still showed the old slim UI
+  (hero "STOPPED", ALLOW-LIST/TO-A-PEER sections) for many minutes — stale
+  QML cache at 21:08 vs new files at 21:59.
+- `omarchy-shell -q shell hide <id> '{}'` with an extra `'{}'` arg fails
+  silently (hide takes only the id) → popup stays open and state seems to
+  drift; use the exact signature.
+- The live popup persists QML state across hide/summon (same Manager
+  instance), so don't read "wrong tab" into a bug.
+- Screenshots: launch quickshell with `setsid … </dev/null >log 2>&1 &
+disown`; find the popup by scanning for its bg color (13,19,25) bbox, then
+  grim that bbox. Never `pkill -f "quickshell -p"` (matches the live shell).
+
+Evidence:
+2026-09-01 (this session): local popup stayed old after install; fixed with
+cache clear + shell restart; new 5-tab popup + ALLOW LIST block verified by OCR.
+
+Action:
+After any QML edit that must appear locally: copy files, clear qmlcache,
+restart the shell. For a release, rely on the installer's fresh shell start
+rather than hot-reload.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Omarchy `Toggle` uses `label` (not `text`); test harness screenshots need full detachment
 
 Type: lesson

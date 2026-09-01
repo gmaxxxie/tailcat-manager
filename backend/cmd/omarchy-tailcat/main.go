@@ -262,7 +262,14 @@ func serve(ctx context.Context, store *config.Store, args []string) int {
 // configuredSnapshot is the persisted serve spec as a JSON-safe view.
 func configuredSnapshot(b *tailcat.CLIBackend) map[string]any {
 	sp := b.SavedSpec()
-	return map[string]any{"services": sp.Services, "key": sp.Key, "filesDir": sp.FilesDir, "filesMode": sp.FilesMode}
+	return map[string]any{
+		"services":  sp.Services,
+		"key":       sp.Key,
+		"filesDir":  sp.FilesDir,
+		"filesMode": sp.FilesMode,
+		"allow":     sp.Allow,
+		"allowNone": sp.AllowNone,
+	}
 }
 
 // serveSpec get/set the persisted serve spec.
@@ -300,7 +307,12 @@ func parseServeSpec(args []string) (tailcat.ListenerSpec, error) {
 		case a == "--allow-none":
 			spec.AllowNone = true
 		case strings.HasPrefix(a, "--allow="):
-			spec.Allow = strings.Split(strings.TrimPrefix(a, "--allow="), ",")
+			v := strings.TrimPrefix(a, "--allow=")
+			if v == "none" {
+				spec.AllowNone = true
+			} else {
+				spec.Allow = strings.Split(v, ",")
+			}
 		case strings.HasPrefix(a, "--files="):
 			v := strings.TrimPrefix(a, "--files=")
 			dir, mode, _ := strings.Cut(v, ":")

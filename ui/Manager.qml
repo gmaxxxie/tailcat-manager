@@ -97,6 +97,12 @@ Item {
   property string socksTarget: ""
   property bool socksFixed: false
 
+  // Allow list: which client public keys (nodekey:…) may connect to the
+  // listener. Empty + allowNone=false means anyone with the address can.
+  property var allowList: []
+  property bool allowNone: false
+  property string allowKeyInput: ""
+
   // Operations
   property string busyOp: ""
   property var pendingPing: null
@@ -200,6 +206,8 @@ Item {
     if (cfg.key && cfg.key !== "") root.listenerKey = cfg.key
     if (cfg.filesDir) root.filesDir = cfg.filesDir
     if (cfg.filesMode) root.filesMode = cfg.filesMode
+    if (cfg.allow) root.allowList = cfg.allow
+    root.allowNone = !!cfg.allowNone
     for (var i = 0; i < svcs.length; i++) {
       if (svcs[i].kind === "files") {
         root.filesShare = true
@@ -219,7 +227,7 @@ Item {
   }
   function startServer() {
     busyOp = "start"
-    root.bridge.startServer(services, listenerKey === "new" ? "new" : listenerKey, function() { busyOp = "" })
+    root.bridge.startServer(services, listenerKey === "new" ? "new" : listenerKey, allowList, allowNone, function() { busyOp = "" })
   }
   function stopServer() {
     busyOp = "stop"
@@ -227,10 +235,31 @@ Item {
   }
   function restartServer() {
     busyOp = "restart"
-    root.bridge.restartServer(services, listenerKey === "new" ? "new" : listenerKey, function() { busyOp = "" })
+    root.bridge.restartServer(services, listenerKey === "new" ? "new" : listenerKey, allowList, allowNone, function() { busyOp = "" })
   }
   function copyListenerAddr() {
     if (root.bridge.listener && root.bridge.listener.addr) root.copyText(root.bridge.listener.addr)
+  }
+
+  // ---- Allow list (Status tab) ----
+  function addAllowKey() {
+    var k = String(allowKeyInput || "").trim()
+    if (!k) { root.bridge.lastError = "Paste a client public key (nodekey:…) to allow"; return }
+    if (k.indexOf("nodekey:") !== 0) { root.bridge.lastError = "Allow entries must be client public keys starting with nodekey:"; return }
+    if (allowList.indexOf(k) >= 0) { root.bridge.lastError = "That key is already allowed"; return }
+    allowList = allowList.concat([k])
+    allowKeyInput = ""
+    root.bridge.lastError = ""
+  }
+  function removeAllowKey(i) { allowList = allowList.filter(function(_, idx) { return idx !== i }) }
+  function clearAllowList() { allowList = []; allowNone = false }
+  function usingFixedKey() { return root.listenerKey !== "new" && root.listenerKey !== "" }
+  function allowUnsafe() { return !root.allowNone && root.allowList.length === 0 }
+  function allowWarning() {
+    if (root.allowNone) return "Blocking all clients (--allow=none) — nothing can connect until you allow keys."
+    if (!root.allowUnsafe()) return ""
+    if (root.usingFixedKey()) return "Fixed identity with NO allow list — anyone with the address can connect. Allow client keys below."
+    return "Ephemeral listener — the address changes each start, but anyone with it can connect while it runs."
   }
 
   function pingSelf(untilDirect) {
@@ -559,7 +588,7 @@ Item {
 
   function shortcutLine() {
     switch (root.sectionIndex) {
-    case 0: return "s start/stop · r restart · p ping · c copy · m manage · ? help"
+    case 0: return "s start/stop · r restart · p ping · c copy · l allow key · m manage · ? help"
     case 1: return "o open in terminal · c copy command · t target · m manage · ? help"
     case 2: return "r receive · s send · j/k pick · a accept · d reject · b browse · t/f focus · Enter send"
     case 3: return "s socks · e exit node · m manage · ? help"
@@ -592,6 +621,7 @@ Item {
       else if (key === Qt.Key_R) { restartServer(); event.accepted = true }
       else if (key === Qt.Key_P) { pingSelf(true); event.accepted = true }
       else if (key === Qt.Key_C) { copyListenerAddr(); event.accepted = true }
+      else if (key === Qt.Key_L) { allowKeyField.forceActiveFocus(); event.accepted = true }
       break
     case 1: // SSH
       if (key === Qt.Key_O) { openSSH(); event.accepted = true }
@@ -739,7 +769,7 @@ Item {
       Layout.fillWidth: true
       visible: root.showHelp
       spacing: Style.space(3)
-      Text { width: parent.width; text: "STATUS  Start/stop/restart the listener, ping it, copy its address. Keys: s/r/p/c. Running services are what this machine shares."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
+      Text { width: parent.width; text: "STATUS  Start/stop/restart the listener, ping it, copy its address, and set the allow list (who may connect). Keys: s/r/p/c/l. Fixed identities need an allow list — otherwise anyone with the address can connect."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       Text { width: parent.width; text: "SSH  Enter a target (tc… or DNS), optional port + user, then Open — a terminal runs `tailcat ssh`, connecting the system ssh client through tailcat. Keys: o/c/t."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       Text { width: parent.width; text: "FILES  Receive: start receiving, copy the address, accept/reject incoming. Send: pick a device (or paste a token) + a file path. Share: serve a folder over SFTP. Keys: r/s/j/k/a/d/b/t/f/Enter."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
       Text { width: parent.width; text: "PROXY  SOCKS5: start a local proxy that dials tailcat servers, copy socks5h://… into apps. Exit node: route this machine's whole network to others (restarts the listener). Keys: s/e."; color: root.dim; font.family: root.fontFamily; font.pixelSize: Style.font.caption; wrapMode: Text.WordWrap }
@@ -819,6 +849,75 @@ Item {
                 onClicked: root.listenerKey = modelData.key
               }
             }
+          }
+
+          // ---- Allow list: who may connect -------
+          PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }
+          PanelSectionHeader { text: "ALLOW LIST"; foreground: root.foreground }
+          Text {
+            width: parent.width
+            visible: root.allowWarning() !== ""
+            text: root.allowWarning()
+            color: (root.allowNone || (root.usingFixedKey() && root.allowUnsafe())) ? root.urgent : root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+          }
+          Text {
+            width: parent.width
+            visible: root.allowList.length === 0
+            text: "No client keys allowed — " + (root.allowNone ? "everyone is blocked (--allow=none)." : "anyone with the address can connect.")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+          Repeater {
+            model: root.allowList
+            Rectangle {
+              width: parent.width
+              height: allowRow.implicitHeight + Style.space(6)
+              radius: Style.cornerRadius
+              color: Util.alpha(root.foreground, 0.05)
+              Row {
+                id: allowRow
+                anchors.fill: parent
+                anchors.margins: Style.space(3)
+                spacing: Style.space(6)
+                Text {
+                  width: parent.width - 130
+                  text: String(modelData).length > 28 ? String(modelData).substr(0, 10) + "…" + String(modelData).substr(-8) : modelData
+                  color: root.foreground
+                  font.family: "monospace"
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideMiddle
+                }
+                Button { text: "Copy"; onClicked: root.copyText(modelData) }
+                Button { text: "Remove"; onClicked: root.removeAllowKey(index) }
+              }
+            }
+          }
+          RowLayout {
+            width: parent.width
+            spacing: Style.space(6)
+            TextField {
+              id: allowKeyField
+              Layout.fillWidth: true
+              placeholderText: "Paste client nodekey:… to allow"
+              foreground: root.foreground
+              accent: root.accent
+              text: root.allowKeyInput
+              onTextChanged: root.allowKeyInput = text
+              onAccepted: root.addAllowKey()
+              Keys.onEscapePressed: root.grabNavFocus()
+            }
+            Button { text: "Allow key"; onClicked: root.addAllowKey() }
+            Button { text: "Clear"; enabled: root.allowList.length > 0; onClicked: root.clearAllowList() }
+          }
+          Toggle {
+            label: "Block all clients (--allow=none)"
+            description: "No one can connect until you allow a key"
+            checked: root.allowNone
+            onClicked: { root.allowNone = !root.allowNone; if (root.allowNone) root.allowList = [] }
           }
 
           PanelSeparator { width: parent.width; foreground: root.foreground; strength: 0.32 }

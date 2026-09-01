@@ -1,5 +1,38 @@
 # Decisions
 
+### 2026-09-01 — Allow-list UI: who may connect to the listener
+
+Type: decision
+
+Summary:
+Added an ALLOW LIST block to the Status tab (add/remove `nodekey:…` client
+keys, `--allow=none` toggle, persistent warning when a fixed identity has no
+allow list), wired through the bridge to `tailcat serve --allow=…`.
+
+Details:
+- `ListenerSpec.Allow`/`AllowNone` already existed; the gap was UI + bridge.
+  Bridge `appendSpecArgs` now emits `--allow=none` (AllowNone) or
+  `--allow=a,b` (list), mutually exclusive.
+- `configuredSnapshot` now includes `allow` + `allowNone` so `status`/
+  `serve status` hand the saved list back to the popup on open
+  (`syncConfigured`).
+- Parsing fix: `--allow=none` maps to `AllowNone=true` (was a literal
+  `["none"]` list entry); `--allow-none` still works.
+- Warning logic: fixed key + empty allow + not allowNone → urgent text
+  (security.md §87 requirement); ephemeral gets a softer note.
+
+Evidence:
+2026-09-01 (this session): `TestServeSpecAllowList`; live shell OCR shows the
+ALLOW LIST block rendering on the Status tab.
+
+Action:
+Allow-list is the only way to lock a fixed (stable-address) identity — keep it
+next to the Key chips on Status, not hidden in Manage.
+
+Status: active
+
+---
+
 ### 2026-09-01 — GUI = 5 primary tabs; serve spec persisted; SSH/SOCKS backend subcommands
 
 Type: decision

@@ -151,15 +151,15 @@ Item {
     })
   }
 
-  function startServer(services, key, onSuccess) {
+  function startServer(services, key, allow, allowNone, onSuccess) {
     var args = ["serve", "start"]
-    appendSpecArgs(args, services, key)
+    appendSpecArgs(args, services, key, allow, allowNone)
     run(args, function(data) { if (data) listener = data; if (onSuccess) onSuccess(data); refresh() })
   }
 
-  function restartServer(services, key, onSuccess) {
+  function restartServer(services, key, allow, allowNone, onSuccess) {
     var args = ["serve", "restart"]
-    appendSpecArgs(args, services, key)
+    appendSpecArgs(args, services, key, allow, allowNone)
     run(args, function(data) { if (data) listener = data; if (onSuccess) onSuccess(data); refresh() })
   }
 
@@ -169,8 +169,15 @@ Item {
 
 
 
-  function appendSpecArgs(args, services, key) {
+  function appendSpecArgs(args, services, key, allow, allowNone) {
     if (key && key !== "") args.push("--key=" + key)
+    // Allow-list: --allow=none blocks everyone; otherwise list client public
+    // keys (nodekey:…) that may connect. Mutually exclusive.
+    if (allowNone === true) {
+      args.push("--allow=none")
+    } else if (allow && allow.length > 0) {
+      args.push("--allow=" + allow.join(","))
+    }
     var parts = []
     var filesSpec = null
     for (var i = 0; i < services.length; i++) {
