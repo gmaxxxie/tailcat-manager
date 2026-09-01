@@ -72,10 +72,10 @@ Item {
 
   function copyText(t) {
     if (!t) return
-    var proc = Qt.createQmlObject(
-      'import Quickshell; import Quickshell.Io; Item { Process { id: p; running: false; command: ["wl-copy"]; stdin: StdioWriter { } ; onExited: function(c) { p.destroy(); } } function run(t) { p.stdin.write(t); p.running = true; } }',
-      root, "clipcopy")
-    if (proc) proc.run(String(t))
+    // wl-copy -- <text>: pass text as argv (no shell, no stdin-EOF dependency).
+    // The old createQmlObject/Process+StdioWriter version never closed stdin,
+    // so wl-copy blocked and nothing was copied.
+    Quickshell.execDetached(["wl-copy", "--", String(t)])
   }
 
   Keys.onPressed: function(event) {
