@@ -70,8 +70,10 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: manager
-    contentWidth: panel.fittedContentWidth(Style.space(580))
-    contentHeight: panel.fittedContentHeight(manager.implicitHeight + Style.space(16), Style.space(720))
+    // Center the popup horizontally on the screen (stays just under the bar).
+    centerOnBar: true
+    contentWidth: panel.fittedContentWidth(Style.space(640))
+    contentHeight: panel.fittedContentHeight(manager.implicitHeight + Style.space(16), Style.space(760))
 
     Manager {
       id: manager
