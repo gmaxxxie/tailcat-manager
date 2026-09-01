@@ -15,6 +15,11 @@
 > Follow the latest user direction (slim + AI-agent-managed) over the V0.2
 > feature-plan recorded below; keep both repos in sync for backend/installer
 > only where they share code.
+> **UPDATE 2026-09-01 later:** slim direction is now official — GitHub master
+> was force-pushed to the slim version; **v0.3.0** released (slim ~5MB static
+> backend, x86_64+arm64); v0.2.0 release re-titled "superseded". The `tailcat`
+> skill moved from `~/.pi/agent/skills/tailcat/` to the shared
+> `~/.agents/skills/tailcat/`. This full-feature repo is kept as history.
 
 - **Release v0.2.0 (2026-09-01) — DONE, published & verified:**
   - `quick-install.sh` bumped `VERSION=v0.2.0`; README got a V0.2 file-transfer
