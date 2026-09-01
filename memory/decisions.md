@@ -1,5 +1,41 @@
 # Decisions
 
+### 2026-09-01 — GUI = 5 primary tabs; serve spec persisted; SSH/SOCKS backend subcommands
+
+Type: decision
+
+Summary:
+Restructured the Manager popup into tabs Status / SSH / Files / Proxy / Manage
+(1-5 keys, ←/→ switch, m Manage), added SSH + SOCKS5 proxy + exit-node + SFTP
+folder-share functionality, and persisted the listener serve spec so a bare
+`serve start` reuses the last services+key.
+
+Details:
+- Status tab owns the listener (start/stop/restart/ping/copy + key chips) and
+  shows running services. Files tab owns receive/send + SFTP share. Proxy owns
+  the SOCKS5 daemon (`socks start|stop|status`, detached `tailcat socks`, state
+  in `~/.config/omarchy-tailcat/socks/`) and the exit-node service toggle.
+  SSH opens `tailcat ssh` in a detected terminal (ghostty/alacritty/kitty/foot/…,
+  override `OMARCHY_TAILCAT_TERMINAL`).
+- Serve spec persisted to `spec.json` (tailcat package, not config, to avoid an
+  import cycle); `serve spec` get/set/clear; `status`/`serve status` include
+  `configured`. QML loads it on open via syncConfigured (configuredSynced flag).
+- The `files` service previously broke start (no dir → serveArgv error); now the
+  bridge passes `--files=DIR[:mode]` and Files tab edits the service entry.
+
+Evidence:
+2026-09-01 refactor (this session): backend tests green incl. new
+socks/ssh/serve-spec tests; harness + OCR verified all 5 tabs render.
+
+Action:
+Keep the 4 operational tabs + Manage; extend tabs rather than adding new ones.
+Terminal override is env-only (no config field yet) — add a Settings.Terminal
+if the user wants to set it from the UI.
+
+Status: active
+
+---
+
 ### 2026-08-31 — Hybrid backend: CLI adapter (V0.1) → native Go library (V0.2)
 
 Type: decision

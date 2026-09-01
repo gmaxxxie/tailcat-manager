@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"omarchy-tailcat/atomicfile"
+	"omarchy-tailcat/config"
 	"omarchy-tailcat/validate"
 )
 
@@ -43,6 +46,10 @@ func NewCLIBackend() *CLIBackend { return &CLIBackend{} }
 
 // Name implements Backend.
 func (b *CLIBackend) Name() string { return "cli" }
+
+// BinPath returns the resolved tailcat binary path (or ErrNotInstalled).
+// Exported so detached daemon helpers (socks, ssh) can build their own argv.
+func (b *CLIBackend) BinPath() (string, error) { return b.resolveBin() }
 
 func (b *CLIBackend) resolveBin() (string, error) {
 	if b.Bin != "" {
@@ -446,6 +453,38 @@ func (b *CLIBackend) logTail() []string {
 		return nil
 	}
 	return b.ln.logTail()
+}
+
+// --- serve spec persistence ------------------------------------------------
+//
+// The last serve spec (services + key + files dir/mode) is persisted separately
+// from the listener state so a bare `serve start` (no service args) reuses it
+// and the config survives stop/restart/reboot instead of silently going broad.
+
+// specPath is where the last serve spec lives.
+func (b *CLIBackend) specPath() string { return filepath.Join(config.Dir(), "spec.json") }
+
+// SpecPath returns the path of the persisted serve spec.
+func (b *CLIBackend) SpecPath() string { return b.specPath() }
+
+// SaveSpec persists the spec used by the last start/restart.
+func (b *CLIBackend) SaveSpec(spec ListenerSpec) error {
+	data, err := json.MarshalIndent(&spec, "", "  ")
+	if err != nil {
+		return err
+	}
+	return atomicfile.Write(b.specPath(), data, 0600)
+}
+
+// SavedSpec returns the persisted spec (zero value if none).
+func (b *CLIBackend) SavedSpec() ListenerSpec {
+	var spec ListenerSpec
+	data, err := atomicfile.Read(b.specPath())
+	if err != nil {
+		return spec
+	}
+	_ = json.Unmarshal(data, &spec)
+	return spec
 }
 
 func firstLine(s string) string {

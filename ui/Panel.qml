@@ -29,6 +29,7 @@ Panel {
   readonly property bool available: tcBridge.available
   readonly property bool running: tcBridge.listener && tcBridge.listener.running === true
   readonly property bool recvRunning: tcBridge.fileRecvState && tcBridge.fileRecvState.running === true
+  readonly property bool socksRunning: tcBridge.socksState && tcBridge.socksState.running === true
 
   readonly property string barText: {
     if (!available) return "󰞀 ×"
@@ -37,6 +38,7 @@ Panel {
       return "󰞀 " + (tcBridge.listener.broad === true ? "all" : String(n))
     }
     if (recvRunning) return "󰞀 ⇩"
+    if (socksRunning) return "󰞀 ⇅"
     return "󰞀"
   }
 

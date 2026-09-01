@@ -26,6 +26,12 @@ Item {
   property string lastError: ""        // human message of last failure
   property string lastDetail: ""       // redacted detail (Details disclosure)
   property bool busy: false
+  // Configured serve spec (services + key + files dir/mode) from the backend.
+  property var configured: null
+  // SOCKS5 proxy daemon state + detected terminal for the SSH tab.
+  property var socksState: ({ running: false })
+  property string terminal: ""
+  property bool terminalOK: false
 
   signal statusRefreshed()
 
@@ -102,10 +108,13 @@ Item {
       minOK = !!v.minOK
       versionError = String(v.error || "")
       listener = data.listener || {}
+      configured = data.configured || null
       statusRefreshed()
     })
     run(["devices", "list"], function(data) { if (data) devices = data })
     run(["identities", "list"], function(data) { if (data) identities = data })
+    run(["socks", "status"], function(data) { if (data) socksState = data })
+    run(["ssh", "status"], function(data) { if (data) { terminal = data.terminal || ""; terminalOK = !!data.terminalOK } })
   }
 
   function refreshDiagnostics() {
@@ -158,16 +167,78 @@ Item {
     run(["serve", "stop"], function(data) { if (data) listener = data; if (onSuccess) onSuccess(data); refresh() })
   }
 
+
+
   function appendSpecArgs(args, services, key) {
     if (key && key !== "") args.push("--key=" + key)
     var parts = []
+    var filesSpec = null
     for (var i = 0; i < services.length; i++) {
       var s = services[i]
       if (!s || s.enabled !== true) continue
       if (s.kind === "port-forward") parts.push(String(s.port))
+      else if (s.kind === "files") { parts.push("files"); if (!filesSpec) filesSpec = s }
       else parts.push(String(s.kind))
     }
+    // The file-share (SFTP) service needs --files=<dir>[:mode]; default to
+    // ~/Downloads if the entry has no dir.
+    if (filesSpec) {
+      var farg = (filesSpec.dir && String(filesSpec.dir).trim() !== "") ? String(filesSpec.dir).trim() : "~/Downloads"
+      if (filesSpec.mode && ["ro", "rw", "wo"].indexOf(String(filesSpec.mode)) >= 0) farg += ":" + String(filesSpec.mode)
+      args.push("--files=" + farg)
+    }
     for (var j = 0; j < parts.length; j++) args.push(parts[j])
+  }
+
+  // ---- SOCKS5 proxy (V0.3 tab) ----
+
+  function socksStart(port, target, onSuccess) {
+    var args = ["socks", "start"]
+    var p = String(port || "").trim()
+    if (p !== "") args.push("--port=" + p)
+    var t = String(target || "").trim()
+    if (t !== "") args.push("--target=" + t)
+    run(args, function(data) {
+      if (data) socksState = data
+      if (onSuccess) onSuccess(data)
+      refreshSocks()
+    }, function() { refreshSocks() })
+  }
+
+  function socksStop(onSuccess) {
+    run(["socks", "stop"], function() {
+      socksState = { running: false }
+      if (onSuccess) onSuccess()
+      refreshSocks()
+    }, function() { refreshSocks() })
+  }
+
+  function refreshSocks() {
+    run(["socks", "status"], function(data) { if (data) socksState = data })
+  }
+
+  // ---- SSH (V0.3 tab) ----
+
+  function sshOpen(target, port, user, cmd, onSuccess) {
+    var args = ["ssh", "open", String(target || "").trim()]
+    var p = String(port || "").trim()
+    if (p !== "" && p !== "22") args.push("--port=" + p)
+    var u = String(user || "").trim()
+    if (u !== "") args.push("--user=" + u)
+    var c = String(cmd || "").trim()
+    if (c !== "") args.push("--cmd=" + c)
+    run(args, function(data) {
+      if (onSuccess) onSuccess(data || { ok: false })
+    }, function(data, message) {
+      if (onSuccess) onSuccess({ ok: false, message: message })
+    })
+  }
+
+  function sshStatus(onSuccess) {
+    run(["ssh", "status"], function(data) {
+      if (data) { terminal = data.terminal || ""; terminalOK = !!data.terminalOK }
+      if (onSuccess) onSuccess(data || {})
+    })
   }
 
   function addDevice(name, target, onSuccess) {

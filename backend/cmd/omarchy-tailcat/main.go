@@ -17,7 +17,13 @@
 //	serve stop
 //	serve restart <spec...> (same flags as start)
 //	serve status
+//	serve spec                 get/set the persisted serve spec
 //	ping <target> [--until-direct] [--timeout=D]
+//	ssh open <target> [--port=N] [--user=U] [--cmd=...]   open in a terminal
+//	ssh status                 detected terminal + tailcat availability
+//	socks start [--port=N] [--target=<blob>] [--derpmap-url=]
+//	socks stop
+//	socks status
 //	devices list
 //	devices add <name> <target>
 //	devices remove <id>
@@ -74,9 +80,14 @@ func newBackend(cfg *config.Config) *tailcat.CLIBackend {
 	return b
 }
 
+// newBackendFromStore builds the configured backend from a store.
+func newBackendFromStore(store *config.Store) *tailcat.CLIBackend {
+	return newBackend(store.Config())
+}
+
 func run(args []string) int {
 	if len(args) == 0 {
-		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "usage: omarchy-tailcat <subcommand> (version|status|validate|parse|identities|serve|ping|devices|diagnostics)"))
+		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "usage: omarchy-tailcat <subcommand> (version|status|validate|parse|identities|serve|ping|devices|diagnostics|file|socks|ssh)"))
 	}
 
 	// Commands that need the store (devices, identity hints).
@@ -97,7 +108,7 @@ func run(args []string) int {
 		b := newBackend(store.Config())
 		v, _ := b.Available(ctx)
 		st, _ := b.ListenerStatus(ctx)
-		out(map[string]any{"backend": b.Name(), "version": v, "listener": st})
+		out(map[string]any{"backend": b.Name(), "version": v, "listener": st, "configured": configuredSnapshot(b)})
 		return 0
 	case "validate", "parse":
 		if len(args) < 2 {
@@ -116,6 +127,10 @@ func run(args []string) int {
 		return serve(ctx, store, args[1:])
 	case "file":
 		return fileCmd(ctx, store, args[1:])
+	case "socks":
+		return socksCmd(ctx, args[1:])
+	case "ssh":
+		return sshCmd(ctx, args[1:])
 	case "ping":
 		return ping(ctx, store, args[1:])
 	case "devices":
@@ -201,19 +216,29 @@ func identities(ctx context.Context, store *config.Store, args []string) int {
 
 func serve(ctx context.Context, store *config.Store, args []string) int {
 	if len(args) == 0 {
-		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "usage: serve start|stop|restart|status"))
+		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "usage: serve start|stop|restart|status|spec"))
 	}
 	b := newBackend(store.Config())
 	switch args[0] {
 	case "status":
 		st, _ := b.ListenerStatus(ctx)
-		out(st)
+		out(map[string]any{"listener": st, "configured": configuredSnapshot(b)})
 		return 0
+	case "spec":
+		return serveSpec(b, args[1:])
 	case "start", "restart":
 		spec, err := parseServeSpec(args[1:])
 		if err != nil {
 			return errOut(err)
 		}
+		// No services/options passed → reuse the persisted spec instead of
+		// silently serving all ports.
+		if spec.Empty() {
+			spec = b.SavedSpec()
+		}
+		// Keep the spec the listener was started with; persist it for the
+		// next bare `serve start`.
+		_ = b.SaveSpec(spec)
 		var st tailcat.ListenerStatus
 		if args[0] == "restart" {
 			st, err = b.RestartListener(ctx, spec)
@@ -223,7 +248,7 @@ func serve(ctx context.Context, store *config.Store, args []string) int {
 		if err != nil {
 			return errOut(err)
 		}
-		out(st)
+		out(map[string]any{"listener": st, "configured": configuredSnapshot(b)})
 		return 0
 	case "stop":
 		st, _ := b.StopListener(ctx)
@@ -232,6 +257,34 @@ func serve(ctx context.Context, store *config.Store, args []string) int {
 	default:
 		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "unknown serve subcommand %q", args[0]))
 	}
+}
+
+// configuredSnapshot is the persisted serve spec as a JSON-safe view.
+func configuredSnapshot(b *tailcat.CLIBackend) map[string]any {
+	sp := b.SavedSpec()
+	return map[string]any{"services": sp.Services, "key": sp.Key, "filesDir": sp.FilesDir, "filesMode": sp.FilesMode}
+}
+
+// serveSpec get/set the persisted serve spec.
+func serveSpec(b *tailcat.CLIBackend, args []string) int {
+	if len(args) == 0 {
+		out(configuredSnapshot(b))
+		return 0
+	}
+	if args[0] == "clear" {
+		_ = os.Remove(b.SpecPath())
+		out(map[string]bool{"cleared": true})
+		return 0
+	}
+	spec, err := parseServeSpec(args)
+	if err != nil {
+		return errOut(err)
+	}
+	if err := b.SaveSpec(spec); err != nil {
+		return errOut(err)
+	}
+	out(configuredSnapshot(b))
+	return 0
 }
 
 // parseServeSpec parses `serve start` flags + positional service specs.

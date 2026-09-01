@@ -107,6 +107,20 @@ case "$sub" in
       echo "pong in 38.0ms via DERP(sfo)"
     fi
     ;;
+  socks)
+    listen="127.0.0.1:0"
+    for a in "$@"; do
+      case "$a" in
+        --listen=*) listen="${a#--listen=}" ;;
+      esac
+    done
+    port="${listen##*:}"
+    if [[ "$port" == "0" || -z "$port" ]]; then
+      port="11080"
+    fi
+    echo "# SOCKS running at socks5h://127.0.0.1:$port" >&2
+    while true; do sleep 5; done
+    ;;
   serve)
     key="new"
     for a in "$@"; do

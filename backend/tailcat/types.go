@@ -85,6 +85,12 @@ type ListenerSpec struct {
 	FullAddr  bool      `json:"fullAddr,omitempty"`
 }
 
+// Empty reports whether the spec carries no services and no options — a caller
+// passed nothing, so a saved spec (if any) should be reused.
+func (s ListenerSpec) Empty() bool {
+	return len(s.Services) == 0 && s.Key == "" && s.FilesDir == "" && len(s.Allow) == 0 && !s.AllowNone && !s.FullAddr
+}
+
 // ListenerStatus is a snapshot of the managed listener.
 type ListenerStatus struct {
 	Running   bool      `json:"running"`

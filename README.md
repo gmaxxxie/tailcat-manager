@@ -72,6 +72,29 @@ bar widget and restarts the shell. Re-run to update. See `quick-install.sh`.
   WireGuard data plane (local DERP, separate processes); real-DERP 400 KB
   transfer verified SHA-256-intact. See `docs/file-transfer.md`.
 
+**V0.3 tabbed UI + SSH / SOCKS5 proxy / exit node — implemented**
+
+- **Tabbed popup:** Manager.qml restructured into five tabs — **Status**
+  (listener start/stop/restart/ping, running services, address, key), **SSH**
+  (open the system ssh client through a tailcat server in a terminal),
+  **Files** (receive + send + SFTP folder share), **Proxy** (SOCKS5 proxy +
+  exit node), and **Manage** (devices / identities / services / diagnostics).
+- **SSH tab:** `omarchy-tailcat ssh open <target> [--port] [--user] [--cmd]`
+  builds `tailcat ssh …` and launches it in a detected terminal
+  (ghostty/alacritty/kitty/foot/…, override `OMARCHY_TAILCAT_TERMINAL`); a
+  Copy-command button gives the raw command for manual use.
+- **SOCKS5 proxy:** `omarchy-tailcat socks start [--port] [--target]` runs a
+  detached `tailcat socks` daemon (state-persisted, like the listener) and
+  reports `socks5h://127.0.0.1:port` for copying into apps; `stop`/`status`.
+- **Exit node:** Proxy tab toggles the `exit-node` serve service (restarts
+  the listener); Status tab shows running services.
+- **SFTP folder share:** the `files` service now actually works — a directory
+  + ro/rw/wo mode is passed through as `--files=DIR[:mode]` (this was a
+  latent broken path: adding a files service used to fail at start).
+- **Persisted serve spec:** the listener's services+key are saved to
+  `spec.json`; a bare `serve start`/`serve restart` reuses them instead of
+  silently going broad, and the Status/Manage tabs load them on open.
+
 Upstream reference copy (pinned for study): `upstream-tailcat/` (a clone of
 `github.com/tailscale/tailcat`, do not edit).
 

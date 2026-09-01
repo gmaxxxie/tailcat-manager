@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Tailcat Manager",
   "license": "MIT",
-  "description": "Graphical management for Tailcat (point-to-point WireGuard connectivity, no control plane) from the Omarchy bar: listener, connect, saved devices, identities, diagnostics, and shared services.",
+  "description": "Graphical management for Tailcat (point-to-point WireGuard connectivity, no control plane) from the Omarchy bar: listener status, SSH, file transfer/sharing, SOCKS5 proxy + exit node, saved devices, identities, diagnostics.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Tailcat",
-    "description": "Start/stop the Tailcat listener, connect to devices, manage saved devices and identities, and configure shared services.",
+    "description": "Start/stop the Tailcat listener, connect via SSH, transfer/share files, run a SOCKS5 proxy or exit node, and manage devices/identities/services.",
     "category": "Network",
     "allowMultiple": false,
     "defaultSection": "right",

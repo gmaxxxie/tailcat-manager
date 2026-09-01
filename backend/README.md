@@ -20,7 +20,7 @@ Requires Go 1.27+. No external Go dependencies for the V0.1 CLI backend.
 
 ```
 version                     availability + version JSON
-status                      backend + listener snapshot JSON
+status                      backend + listener snapshot JSON (+ configured spec)
 validate <target>           validate a token/DNS name (local, no network)
 parse <token>               alias for validate
 identities list             saved identities (with client-kind hints)
@@ -31,14 +31,26 @@ serve start <spec...> [--key=X] [--allow=a,b] [--allow-none] [--files=D[:mode]] 
 serve stop
 serve restart <spec...> (same flags as start)
 serve status
+serve spec                  get/set the persisted serve spec (clear to reset)
 ping <target> [--until-direct] [--timeout=D]
+ssh open <target> [--port=N] [--user=U] [--cmd=...]   open `tailcat ssh` in a terminal
+ssh status                  detected terminal + tailcat availability
+socks start [--port=N] [--target=<blob>] [--derpmap-url=]
+socks stop
+socks status
 devices list|add <name> <target>|remove <id>|rename <id> <name>|touch <id>
 diagnostics
 ```
 
 `<spec...>` is a comma-separated list of ports and named services
 (`no-auth-ssh`, `files`, `exit-node`). An empty spec serves all localhost ports
-(`serve all`, flagged as `broad` in status).
+(`serve all`, flagged as `broad` in status). A bare `serve start`/`restart`
+(no services/options) reuses the persisted spec (`spec.json`) instead of going
+broad; `serve spec` get/set/clear manages it.
+
+`socks start` runs a detached `tailcat socks` daemon (like the listener) and
+reports its `socks5h://…` address; `ssh open` builds `tailcat ssh …` and
+launches it in a detected terminal (`OMARCHY_TAILCAT_TERMINAL` overrides).
 
 ## Config & state
 
@@ -47,6 +59,9 @@ diagnostics
 - Listener state: `~/.config/omarchy-tailcat/listener.json` + `addr`. The
   listener is a detached `tailcat serve` process that survives backend
   invocations; `serve status`/`serve stop` work from any invocation.
+- Serve spec: `~/.config/omarchy-tailcat/spec.json` — the last services+key
+  the listener was started with, reused by a bare `serve start`.
+- SOCKS state: `~/.config/omarchy-tailcat/socks/state.json` + `pid`.
 - Tailcat's own keys/cache live under `~/.config/tailcat/` and
   `~/.cache/tailcat/` and are never written by this backend.
 

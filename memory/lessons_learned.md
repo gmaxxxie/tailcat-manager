@@ -1,5 +1,38 @@
 # Lessons Learned
 
+### 2026-09-01 — Omarchy `Toggle` uses `label` (not `text`); test harness screenshots need full detachment
+
+Type: lesson
+
+Summary:
+(1) The Omarchy kit's `Toggle.qml` exposes `label`/`description`, not `text`
+— using `text:` on a Toggle fails QML load with "Cannot assign to non-existent
+property \"text\"". (2) To screenshot a Quickshell harness: launch with
+`setsid quickshell -p … </dev/null >log 2>&1 & disown` (backgrounding without
+full detach makes the bash tool hang on the inherited output pipe), then use
+`hyprctl clients -j` for the window geometry and `grim -g "x,y wxh"`.
+`pkill -f "quickshell -p"` is dangerous — it can match the user's live shell
+(`quickshell -n -p /usr/share/omarchy/shell`); target the harness file name
+instead (e.g. `pkill -f LongHarness`).
+
+Details:
+- Manager.qml Toggle rows must use `label:` (+ optional `description:`);
+  `ToggleSwitch` is the bare switch inside a row.
+- The bash tool returned "no output" for any command after a non-detached
+  backgrounded quickshell; `setsid … </dev/null >/log 2>&1 & disown` fixed it.
+
+Evidence:
+2026-09-01 tab refactor (this session): first harness load failed at
+`Manager.qml[1224:15]` on a Toggle `text:`; screenshot workflow developed.
+
+Action:
+Always use `label:` on Toggle. When capturing UI, fully detach the harness
+process and never pkill the live shell pattern.
+
+Status: active
+
+---
+
 ### 2026-09-01 — `gh release upload file#label` is a display label, NOT a rename; ship the right filename
 
 Type: lesson
