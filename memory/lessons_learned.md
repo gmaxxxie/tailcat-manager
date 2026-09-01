@@ -1,5 +1,32 @@
 # Lessons Learned
 
+### 2026-09-01 — Omarchy `Toggle` elides its label at 240px; stretch to full width
+
+Type: lesson
+
+Summary:
+The kit's `Toggle.qml` has `implicitWidth: Style.space(240)` and renders its
+label with `elide: Text.ElideRight` (no wrap), so any label longer than ~240px
+shows as `Label na…`. In a popup/panel, every Toggle must be stretched to the
+column width (`width: parent.width` inside a Column, `Layout.fillWidth: true`
+inside a RowLayout) or its label gets silently truncated.
+
+Details:
+- Symptom: "Allow connections from other devices" → "Allow connections fr..".
+- Fix: added `width: parent.width` / `Layout.fillWidth: true` to every Toggle;
+  split the Receive-files row so the toggle has its own line instead of sharing
+  a row with a text field + button.
+
+Evidence:
+2026-09-01 device-hub pass (this session); OCR-verified labels now render whole.
+
+Action:
+Any Toggle added in the future must set an explicit full-width width/fillWidth.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Go json `omitempty` does NOT skip zero `time.Time`; QML mis-parses it as ancient
 
 Type: lesson
