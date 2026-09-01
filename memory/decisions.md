@@ -47,7 +47,9 @@ Details:
   terminal already provides. pi is the natural surface for the rest.
 - Widget (`ui/Manager.qml`): 1186 → ~190 lines. `TailcatBridge.qml` trimmed to
   status/serve/ping only. Removed `ui/HarnessManage.qml`, `ui/HarnessFile.qml`.
-- Skill: `~/.pi/agent/skills/tailcat/SKILL.md` — CLI reference, security rules
+- Skill: `~/.agents/skills/tailcat/SKILL.md` (shared across AI agents since
+  2026-09-01; formerly `~/.pi/agent/skills/tailcat/`) — CLI reference, security
+  rules
   (tokens = capabilities), workflows (start/stop, share address, ping/connect,
   devices, identities, transfer, diagnostics), troubleshooting.
 - Backend: `Backend` interface unchanged (it never included transfer methods);

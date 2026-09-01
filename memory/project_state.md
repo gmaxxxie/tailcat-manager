@@ -2,7 +2,7 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/tailcat-manager`)
 
-### Status: SIMPLIFIED (2026-09-01) — widget = status+start/stop; management = pi skill; transfers = terminal
+### Status: SIMPLIFIED (2026-09-01) — widget = status+start/stop; management = AI agent skill; transfers = terminal; **v0.3.0 released**
 
 The project was deliberately de-complexified by splitting by surface:
 
@@ -10,25 +10,27 @@ The project was deliberately de-complexified by splitting by surface:
   self-ping only. `ui/Manager.qml` went from **1186 → ~190 lines**;
   `TailcatBridge.qml` trimmed to status/serve/ping. Devices/identities/
   services/diagnostics/file-transfer pages were removed from the GUI.
-- **pi skill `tailcat`** (`~/.pi/agent/skills/tailcat/SKILL.md`) drives the
-  `omarchy-tailcat` CLI for everything else: devices, identities, shared
-  services, diagnostics, connect/ping. User asks pi "帮我管理 tailcat".
+- **AI-agent skill `tailcat`** (`~/.agents/skills/tailcat/SKILL.md`, shared —
+  moved out of `~/.pi/agent/skills/` on 2026-09-01 so any AI agent can use it)
+  drives the `omarchy-tailcat` CLI for everything else: devices, identities,
+  shared services, diagnostics, connect/ping. User asks an AI agent
+  "帮我管理 tailcat". User-facing copy says **"an AI agent"**, never a tool name.
 - **File transfer in the terminal**: `tailcat recv <dir>` (receive) and
   `tailcat cp <file> <addr>:` (send). The **V0.2 native Go adapter was
   removed entirely** — `native.go`, `cmd/nativedemo`, the `file` subcommand +
   recv daemon, native e2e tests, and the `tailscale.com`/gVisor dep tree.
   Backend binary ~20MB → **~5MB**; build is fast; all unit tests pass.
+- **v0.3.0 released 2026-09-01** (slim backend, static x86_64+arm64 assets,
+  `quick-install.sh` → v0.3.0). GitHub master = slim version (force-pushed).
+  v0.2.0 release re-titled "superseded"; v0.1.0 kept as-is.
 - Installed binary updated at `~/.local/bin/omarchy-tailcat`.
 
 ### Next actions
-1. **Restore `tailcat` binary** (currently MISSING — the dev build in
-   `/tmp/tailcat-build/` was wiped). Either `paru -S tailcat`/`tailcat-bin` or
-   rebuild from `github.com/tailscale/tailcat` (pinned commit `4d50a34f`,
-   2026-08-30) into `~/.local/bin/tailcat`. Until then the widget shows
-   "NOT INSTALLED" (handled gracefully).
-2. **Install the slim plugin to the live shell** (copy `ui/*.qml` to
-   `~/.config/omarchy/plugins/dev.omarchy.tailcat/`, then
-   `omarchy restart shell`) — pending user confirmation.
+1. ~~Restore `tailcat` binary~~ **DONE** (rebuilt to `~/.local/bin/tailcat` as a
+   real file on 2026-09-01; `available:true`).
+2. ~~Install the slim plugin to the live shell~~ **DONE** (synced to
+   `~/.config/omarchy/plugins/dev.omarchy.tailcat/` + `omarchy restart shell`,
+   loaded clean).
 3. **Two-machine acceptance** (revised `docs/two-machine-test.md`): listener
    + terminal file transfer both ways, Direct vs DERP.
 4. Optional: drop the archived `upstream-tailcat/` clone / decide license.
