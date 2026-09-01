@@ -922,7 +922,7 @@ Item {
             }
             Toggle {
               label: "Block everyone until I allow a device"
-              description: "Safest while you add device keys"
+              description: "Lock: nobody can connect (even with the address) until you allow one — use while adding device keys"
               checked: root.allowNone
               width: parent.width
               onClicked: { root.allowNone = !root.allowNone; if (root.allowNone) root.allowList = [] }
