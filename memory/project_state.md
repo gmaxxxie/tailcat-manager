@@ -2,7 +2,29 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; **V0.3 device-hub UI (This Device/Devices/Services/More) done**; next: two-machine acceptance + V0.3 text
+### Status: V0.1 + V0.2 done & live; **V0.3 device-hub UI done; SSH cross-machine verified**; next: two-machine file transfer + V0.3 text
+
+> **2026-09-01 session log (device-hub + SSH verification):**
+> - UI rebuilt as device-hub (This Device / Devices / Services / More), pushed
+>   15 commits to GitHub origin/master (e9762f1..46979e1). See the full commit
+>   history; key UX fixes: popup widened 460→580, Toggle labels no longer
+>   elide (240px trap), WHO CAN CONNECT hides when Allow connections is off,
+>   Address type picker (Ephemeral/fixed) added, short address shows the random
+>   middle (tail is fixed), spec reloaded on each open.
+> - **SSH verified end-to-end**: tunnel ping (DERP) → sshd banner → public-key
+>   auth → remote command. Local loopback works; cross-machine to **X12**
+>   (ThinkPad X12) works via the Devices→SSH button (ghostty opens
+>   `maxt@thinkpadx12:~`). X12 runs system sshd + accepted id_ed25519_local;
+>   tailcat is NOT on X12's PATH (couldn't read its nodekey for whitelisting).
+> - **~/.ssh/config** gained `Host tailcat-* → IdentityFile id_ed25519_local,
+>   IdentitiesOnly yes` so `tailcat ssh` is passwordless (backup at
+>   ~/.ssh/config.bak.*).
+> - Security: found this machine's listener had been running `serve all` with
+>   NO --allow (open to anyone) while the popup claimed 1 allowed device;
+>   fixed by persisting the whitelist + restart. Lesson: verify lockdown from
+>   the process cmdline, not the popup.
+> - This machine's listener: ephemeral (--key=new) + whitelist
+>   [nodekey:8f184a6f…] (its own client-default), serve all.
 
 > **IMPORTANT — 2026-09-01 final model: device-hub, not server/client.**
 > Per the user's product brief, the UI is organized around devices + capabilities:
