@@ -1,5 +1,35 @@
 # Lessons Learned
 
+### 2026-09-01 — Tailcat address short form: the tail is fixed, use the random middle
+
+Type: lesson
+
+Summary:
+Tailcat tokens are `tco2FwW` + base64url(CBOR) where the FIRST chars and the
+LAST ~6 chars are fixed (the DERP region tail `…FpGQEw`), and only the middle
+is the per-key randomness. Shortening as `tc…` + last-4 shows the SAME string
+for every address — an ephemeral restart changes the full address but the UI
+still reads `tc…GQEw`, so users think "the address didn't change". Fix: show
+`tc…` + 7 chars from the random middle + `…` + last 4.
+
+Details:
+- User: "picked Ephemeral → Restart, address didn't change" — it HAD changed
+  (process cmdline showed --key=new, full addr differed), only the short form
+  was misleading.
+- Verify key/address changes from the full addr or process cmdline, not the UI
+  short form.
+
+Evidence:
+2026-09-01 address-shortening fix (this session).
+
+Action:
+When displaying tailcat addresses, derive the distinguishing part from the
+random middle; never from the fixed tail.
+
+Status: active
+
+---
+
 ### 2026-09-01 — Verify listener security from the process cmdline, not the popup
 
 Type: lesson
