@@ -1,5 +1,44 @@
 # Lessons Learned
 
+### 2026-09-01 — Copy-to-clipboard in a Quickshell popup: never Qt.createQmlObject a Process; use execDetached(["wl-copy","--",text])
+
+Type: lesson
+
+Summary:
+The popup's Copy button silently did nothing because `copyText` used
+`Qt.createQmlObject` to build a dynamic QML `Process { command: ["wl-copy"];
+stdin: StdioWriter {} }` with an inline `function run(t){...}`. That dynamic
+QML fails to parse (`clipcopy:1:127: Unexpected token ';'` in the shell log)
+and, even when it parses, writes stdin before starting the process and never
+closes it, so wl-copy blocks and nothing is copied. Fix: one line —
+`Quickshell.execDetached(["wl-copy", "--", String(t)])`. `wl-copy -- <text>`
+takes the text as argv (no shell, no stdin/EOF dependency) and was already the
+pattern used by omarchy's own tailscale/network panels and the syncthing
+plugin.
+
+Details:
+- Symptom: user "弹窗里复制不了 key" — Copy button / `c` key did nothing.
+- Diagnosis: `journalctl --user` showed
+  `Manager.qml[75]: Qt.createQmlObject(): failed to create object …
+  clipcopy:1:127: Unexpected token ';'`.
+- E2E verification recipe (no manual clicking): `omarchy-shell
+  dev.omarchy.tailcat toggle` (opens the KeyboardPanel via `ipcTarget`),
+  `wtype -k c` (sends the copy key), then `wl-paste` — full tc… address
+  appears. Same recipe works for any omarchy KeyboardPanel popup with an
+  `ipcTarget`.
+- Also learned: a harness that "prints Configuration Loaded" but never exits
+  gives `$?` from the pipe (head), not quickshell — use `${PIPESTATUS[0]}`
+  and timeout to get the real exit status.
+
+Evidence:
+`/home/max/tailcat-manager/ui/Manager.qml` copyText; e2e verified 2026-09-01.
+
+Action:
+For clipboard copy in Quickshell QML use `Quickshell.execDetached(["wl-copy",
+"--", text])`. Never build a dynamic QML Process for wl-copy.
+
+Status: active
+
 ### 2026-09-01 — A bar widget is the wrong surface for complex ops; offload to pi + CLI
 
 Type: lesson
