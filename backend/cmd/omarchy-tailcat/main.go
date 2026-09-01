@@ -123,6 +123,9 @@ func run(args []string) int {
 		rep, _ := b.Diagnostics(ctx)
 		out(rep)
 		return 0
+	case "web":
+		// Long-running local web console (loopback only).
+		return webCmd(args[1:])
 	default:
 		return errOut(tailcat.Errf(tailcat.ErrInvalidInput, "unknown subcommand %q", args[0]))
 	}
