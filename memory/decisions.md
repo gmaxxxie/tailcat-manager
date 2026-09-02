@@ -1,5 +1,35 @@
 # Decisions
 
+### 2026-09-02 — Project paused; keep both source copies; master(full GUI) = canonical line
+
+Type: decision
+
+Summary:
+On pausing the project (Tailcat immature), keep **both** local source folders
+and preserve both GitHub lines: `master` = full GUI
+(`/home/max/项目/tailcat-manager`), `slim` = slim v0.3.0
+(`/home/max/tailcat-manager`). User confirmed 2026-09-02: "可以保留".
+
+Details:
+- GitHub backup 2026-09-02: local slim line fast-forwarded to remote `slim`
+  (`13ce219..dd4b301`, incl. WIP SSH allow-list + archived agent skill
+  `docs/tailcat-agent-skill.md` + PAUSED project_state). `master` untouched
+  (84bd240, full GUI line).
+- Local runtime fully removed (processes, binaries, plugin, skill, configs,
+  keys, cache); source + docs + memory retained in both folders.
+- Resume: prefer `master` (full GUI) unless user re-decides; restore skill
+  from `docs/tailcat-agent-skill.md`, rebuild backend, reinstall plugin+CLI.
+
+Evidence:
+User instruction 2026-09-02 (pause + cleanup + keep foundation); subsequent
+"可以保留" confirming the two-folder/dual-line layout.
+
+Action:
+Do not delete either folder; do not force-push over `master` or `slim`.
+Record future changes on the branch matching the folder's line.
+
+Status: active
+
 ### 2026-09-01 — User-facing copy says "AI agent", never a tool name
 
 Type: preference
