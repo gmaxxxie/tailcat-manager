@@ -2,7 +2,31 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/tailcat-manager`)
 
-### Status: SIMPLIFIED (2026-09-01) — widget = status+start/stop; management = AI agent skill; transfers = terminal; **v0.3.0 released**
+### Status: **PAUSED (2026-09-02) — tailcat itself is immature; local install removed, source kept for future research**
+
+On 2026-09-02 the user paused the whole project because upstream Tailcat is
+not mature enough. Local runtime was removed; source/R&D remains. Details:
+
+- **GitHub backup (2026-09-02):** the local slim line (master @ f47b02f) was
+  fast-forwarded to the remote **`slim`** branch (`13ce219..f47b02f`) — 18
+  commits incl. WIP SSH-server allow-list and the archived agent skill
+  (`docs/tailcat-agent-skill.md`). `master` on GitHub is **NOT** this line.
+- **Two diverged lines of work exist:** local `/home/max/tailcat-manager` =
+  slim v0.3.0 line (→ GitHub `slim`); `/home/max/项目/tailcat-manager` = full
+  GUI line, in sync with GitHub **`master`** (84bd240, incl. device-hub,
+  allow-list, 5-tab popup, SOCKS5/exit-node/SFTP). Both folders kept as R&D.
+- **Locally removed (2026-09-02):** all `tailcat --json serve …` processes;
+  `~/.local/bin/{tailcat,omarchy-tailcat}`; plugin
+  `~/.config/omarchy/plugins/dev.omarchy.tailcat/` (full-GUI version, incl.
+  bin/{omarchy-tailcat,tc-filepicker}); agent skill `~/.agents/skills/tailcat/`
+  (content archived to `docs/tailcat-agent-skill.md`); runtime configs
+  `~/.config/tailcat/` + `~/.config/omarchy-tailcat/`; cache
+  `~/.cache/tailcat`; tmp build artifacts. No autostart/rc/systemd refs.
+- **To resume:** restore `~/.agents/skills/tailcat/SKILL.md` (from
+  `docs/tailcat-agent-skill.md`), rebuild `omarchy-tailcat` from `backend/`,
+  reinstall the plugin + `tailcat` CLI (AUR), regenerate keys.
+
+### Prior status — SIMPLIFIED (2026-09-01) — widget = status+start/stop; management = AI agent skill; transfers = terminal; **v0.3.0 released**
 
 The project was deliberately de-complexified by splitting by surface:
 
@@ -22,17 +46,18 @@ The project was deliberately de-complexified by splitting by surface:
   Backend binary ~20MB → **~5MB**; build is fast; all unit tests pass.
 - **v0.3.0 released 2026-09-01** (slim backend, static x86_64+arm64 assets,
   `quick-install.sh` → v0.3.0). GitHub master = slim version (force-pushed).
-  v0.2.0 release re-titled "superseded"; v0.1.0 kept as-is.
-- Installed binary updated at `~/.local/bin/omarchy-tailcat`.
+  v0.2.0 release re-titled "superseded"; v0.1.0 kept as-is. NOTE: master was
+  later force-pushed to the full-GUI line again (see PAUSED status above).
+- Installed binary updated at `~/.local/bin/omarchy-tailcat` (removed 2026-09-02).
 
-### Next actions
+### Next actions (all on hold — project PAUSED 2026-09-02)
 1. ~~Restore `tailcat` binary~~ **DONE** (rebuilt to `~/.local/bin/tailcat` as a
-   real file on 2026-09-01; `available:true`).
+   real file on 2026-09-01; `available:true`). Removed again on 2026-09-02.
 2. ~~Install the slim plugin to the live shell~~ **DONE** (synced to
    `~/.config/omarchy/plugins/dev.omarchy.tailcat/` + `omarchy restart shell`,
-   loaded clean).
+   loaded clean). Plugin removed again on 2026-09-02.
 3. **Two-machine acceptance** (revised `docs/two-machine-test.md`): listener
-   + terminal file transfer both ways, Direct vs DERP.
+   + terminal file transfer both ways, Direct vs DERP — deferred to resume.
 4. Optional: drop the archived `upstream-tailcat/` clone / decide license.
 
 ### Historical (pre-simplification)
@@ -60,3 +85,7 @@ The project was deliberately de-complexified by splitting by surface:
 ### Open questions
 - License choice (BSD-3-Clause vs MIT) — deferred to first release.
 - Whether to keep `upstream-tailcat/` clone in the repo (currently absent).
+- Which line to treat as canonical on resume: GitHub `master` (full GUI,
+  `/home/max/项目/tailcat-manager`) vs `slim` (slim v0.3.0,
+  `/home/max/tailcat-manager`). Decided implicitly 2026-09-01 (full GUI won
+  on master) but worth re-confirming when work resumes.
