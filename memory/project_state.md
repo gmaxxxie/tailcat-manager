@@ -2,7 +2,19 @@
 
 ## Tailcat Manager for Omarchy (`/home/max/项目/tailcat-manager`)
 
-### Status: V0.1 + V0.2 done & live; **V0.3 device-hub UI done; SSH cross-machine verified**; next: two-machine file transfer + V0.3 text
+### Status: V0.1 + V0.2 done & live; **V0.3 device-hub UI done; SSH cross-machine verified**; **PROJECT PAUSED 2026-09-02**; next: two-machine file transfer + V0.3 text
+
+> **2026-09-02 — project paused + local cleanup + consolidated to one directory:**
+> - User paused the project because upstream Tailcat is immature. Local runtime
+>   removed (processes, binaries, plugin, skill, configs/keys, cache). See the
+>   `slim` branch's `memory/project_state.md` (commit f97a201) for the full
+>   pause/cleanup record and `docs/tailcat-agent-skill.md` (archived skill).
+> - **Consolidated to a single local project directory** (this one): the other
+>   duplicate checkout `/home/max/tailcat-manager` (slim line) was removed after
+>   being fully pushed to GitHub `slim`. Both lines now live here as branches:
+>   `master` (full GUI, canonical) + `slim` (slim v0.3.0, archived) +
+>   `full-v0.2`. No data lost (everything on GitHub).
+> - Resume from this directory; prefer `master`.
 
 > **2026-09-01 session log (device-hub + SSH verification):**
 > - UI rebuilt as device-hub (This Device / Devices / Services / More), pushed
