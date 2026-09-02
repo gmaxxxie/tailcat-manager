@@ -182,4 +182,19 @@ Item {
   function webStop(onSuccess) {
     run(["web", "stop"], function(data) { if (data) webState = data; refreshWeb(); if (onSuccess) onSuccess(data) })
   }
+
+  // ---- SSH server (no-auth-ssh with allow-list) ----
+  property string myPub: ""
+  function refreshPub() {
+    run(["identities", "pub"], function(data) { if (data && data.publicKey) myPub = data.publicKey })
+  }
+  function sshServerEnable(allow, onSuccess) {
+    var args = ["serve", "restart", "no-auth-ssh"]
+    var allowList = String(allow || "").trim()
+    if (allowList !== "") args.push("--allow=" + allowList)
+    run(args, function(data) { if (data) listener = data; if (onSuccess) onSuccess(data); refresh() })
+  }
+  function sshServerDisable(onSuccess) {
+    run(["serve", "restart", "all"], function(data) { if (data) listener = data; if (onSuccess) onSuccess(data); refresh() })
+  }
 }

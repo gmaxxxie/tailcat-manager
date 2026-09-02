@@ -64,6 +64,7 @@ Item {
         root.bridge.refresh()
         root.bridge.refreshDevices()
         root.bridge.refreshWeb()
+        root.bridge.refreshPub()
       }
     })
   }
@@ -147,6 +148,35 @@ Item {
   function openWeb() {
     var url = root.bridge.webState && root.bridge.webState.url
     if (url) Quickshell.execDetached(["xdg-open", url])
+  }
+
+  // ---- SSH server (no-auth-ssh, allow-list) ----
+  function sshServerOn() {
+    var svcs = root.listenerState.services || []
+    for (var i = 0; i < svcs.length; i++)
+      if (svcs[i].kind === "no-auth-ssh" && svcs[i].enabled) return true
+    return false
+  }
+  function toggleSshServer() {
+    if (root.sshServerOn()) {
+      root.actionNote = "Disabling SSH server…"
+      root.bridge.sshServerDisable(function() {
+        root.actionNote = "SSH server off"
+        noteTimer.restart()
+      })
+    } else {
+      root.actionNote = "Enabling SSH server…"
+      root.bridge.sshServerEnable(sshAllowField.text, function() {
+        root.actionNote = "SSH server on — share Addr with allowed peers"
+        noteTimer.restart()
+      })
+    }
+  }
+  function copyMyPub() { root.copyText(root.bridge.myPub) }
+  function shortPub(p) {
+    var s = String(p || "")
+    if (s.indexOf("nodekey:") === 0 && s.length > 20) return s.slice(0, 10) + "…" + s.slice(-6)
+    return s || "—"
   }
 
   Keys.onPressed: function(event) {
@@ -260,6 +290,66 @@ Item {
     }
 
     PanelSeparator { Layout.fillWidth: true; foreground: root.foreground; strength: 0.32 }
+
+    // ---- SSH server: let allowed peers SSH in (no-auth-ssh + allow-list) ----
+    Text {
+      Layout.fillWidth: true
+      text: "SSH SERVER (ALLOW-LIST)"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      Text {
+        Layout.fillWidth: true
+        text: root.sshServerOn() ? "● SSH on" : "○ SSH off"
+        color: root.sshServerOn() ? root.accent : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+      }
+      Button {
+        text: root.sshServerOn() ? "Disable" : "Enable"
+        onClicked: root.toggleSshServer()
+      }
+    }
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      TextField {
+        id: sshAllowField
+        Layout.fillWidth: true
+        placeholderText: "Allow keys: nodekey:…,… (empty = anyone on tunnel)"
+        foreground: root.foreground
+        accent: root.accent
+      }
+    }
+    RowLayout {
+      width: parent.width
+      spacing: Style.space(6)
+      Text {
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+        text: "My key " + root.shortPub(root.bridge.myPub)
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+      Button {
+        text: "Copy"
+        enabled: root.bridge.myPub !== ""
+        onClicked: root.copyMyPub()
+      }
+    }
+    Text {
+      Layout.fillWidth: true
+      text: "Peers run: omarchy-tailcat identities pub → paste their nodekey above. Only listed keys can SSH in; your Addr is what they dial."
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      wrapMode: Text.WordWrap
+    }
 
     // ---- Saved devices: one-click SSH ----
     Text {
